@@ -1,13 +1,16 @@
 import { App, TFile, Plugin, debounce, Debouncer } from "obsidian";
 import dayjs from "dayjs";
 import { CountType, PluginData } from "./types";
+import { LanguageOption } from "./i18n";
 
 const DEFAULT_DATA: PluginData = {
     history: {},
     todaySession: {},
     lastSaveTime: 0,
     sessionDate: "",
-    countType: 'word' // 默认值
+    countType: 'word',
+    historyRetentionDays: 0, // 默认 0 (永久保留)
+    language: 'auto'
 };
 
 export class DataManager {
@@ -15,31 +18,44 @@ export class DataManager {
     private plugin: Plugin;
     public data: PluginData;
     private debouncedSave: Debouncer<[], void>;
+    public debouncedUpdateFileStats: Debouncer<[TFile, string], void>;
 
     constructor(app: App, plugin: Plugin) {
         this.app = app;
         this.plugin = plugin;
         this.data = DEFAULT_DATA;
         this.debouncedSave = debounce(() => this.saveData(), 1000, false);
+        // [打字性能优化] 300ms 防抖包装，解决高频打字主线程卡顿
+        this.debouncedUpdateFileStats = debounce(
+            (file: TFile, content: string) => this.updateFileStats(file, content),
+            300,
+            false
+        );
     }
 
     async loadData() {
         const loaded = await this.plugin.loadData();
         this.data = Object.assign({}, DEFAULT_DATA, loaded);
         
-        // 确保 countType 有值 (处理旧数据)
         if (!this.data.countType) {
             this.data.countType = 'word';
         }
+        if (this.data.historyRetentionDays === undefined) {
+            this.data.historyRetentionDays = 0;
+        }
+        if (!this.data.language) {
+            this.data.language = 'auto';
+        }
 
-        // 检查跨日逻辑
+        // 跨日检测与历史数据归档瘦身
         this.checkDateAndReset();
+        this.archiveOldHistory(this.data.historyRetentionDays);
     }
 
     async saveData() {
         this.data.lastSaveTime = Date.now();
         if (!this.data.sessionDate) {
-             this.data.sessionDate = dayjs().format("YYYY-MM-DD");
+            this.data.sessionDate = dayjs().format("YYYY-MM-DD");
         }
         await this.plugin.saveData(this.data);
     }
@@ -48,7 +64,6 @@ export class DataManager {
         const todayKey = dayjs().format("YYYY-MM-DD");
         
         if (this.data.sessionDate !== todayKey) {
-            // 容错：如果 sessionDate 为空但 history 里有今天的数据，尝试恢复而不是清空
             if (!this.data.sessionDate && this.data.history[todayKey]) {
                 console.log(`[Word Heatmap] Recovering session for ${todayKey}...`);
                 this.data.sessionDate = todayKey;
@@ -59,19 +74,46 @@ export class DataManager {
             console.log(`[Word Heatmap] New day: ${todayKey}. Resetting session.`);
             this.data.todaySession = {};
             this.data.sessionDate = todayKey;
+            
+            // 跨天时自动触发历史瘦身归档
+            this.archiveOldHistory(this.data.historyRetentionDays);
             this.saveData();
         }
     }
 
-    // [核心修复]：重启后不再误删数据
+    /**
+     * 历史明细自动瘦身归档
+     * @param retentionDays 保留天数。0 表示永久保留。大于 0 时将清理超出天数的笔记路径明细 files 字段，保留 totalWords 汇总
+     */
+    archiveOldHistory(retentionDays: number = 0) {
+        if (!retentionDays || retentionDays <= 0) {
+            return; // 0 表示永久保留，不做任何清理
+        }
+
+        const cutoffDate = dayjs().subtract(retentionDays, 'day');
+        let archivedCount = 0;
+
+        for (const [dateStr, stats] of Object.entries(this.data.history)) {
+            if (dayjs(dateStr).isBefore(cutoffDate, 'day')) {
+                // 如果存在详细路径映射，则清空明细字典（保留 totalWords）
+                if (stats.files && Object.keys(stats.files).length > 0) {
+                    stats.files = {};
+                    archivedCount++;
+                }
+            }
+        }
+
+        if (archivedCount > 0) {
+            console.log(`[Word Heatmap] Archived details for ${archivedCount} old dates (older than ${retentionDays} days).`);
+            this.debouncedSave();
+        }
+    }
+
     setCountType(type: CountType) {
-        // 只有当传入的类型 与 硬盘里保存的类型 不一致时，才重置
         if (this.data.countType !== type) {
             console.log(`[Word Heatmap] Switching count type from ${this.data.countType} to ${type}. Resetting stats.`);
             
-            this.data.countType = type; // 更新持久化状态
-            
-            // 重置今日数据
+            this.data.countType = type;
             this.data.todaySession = {};
             const todayKey = dayjs().format("YYYY-MM-DD");
             if (this.data.history[todayKey]) {
@@ -79,6 +121,17 @@ export class DataManager {
             }
             this.saveData();
         }
+    }
+
+    setLanguage(lang: LanguageOption) {
+        this.data.language = lang;
+        this.saveData();
+    }
+
+    setHistoryRetentionDays(days: number) {
+        this.data.historyRetentionDays = days;
+        this.archiveOldHistory(days);
+        this.saveData();
     }
 
     getCount(text: string): number {
@@ -109,8 +162,6 @@ export class DataManager {
         
         const filePath = file.path;
         
-        // 如果今天已经记录过该文件的基准值，绝对不要覆盖它！
-        // 这样重启后，initial 依然是重启前第一次打开时的值。
         if (!this.data.todaySession[filePath]) {
             const currentCount = this.getCount(content);
             this.data.todaySession[filePath] = { 
@@ -128,7 +179,6 @@ export class DataManager {
         const filePath = file.path;
         const currentCount = this.getCount(content);
 
-        // 容错初始化
         if (!this.data.todaySession[filePath]) {
             this.data.todaySession[filePath] = { initial: currentCount, current: currentCount };
         }
@@ -141,19 +191,16 @@ export class DataManager {
             this.data.history[todayKey] = { totalWords: 0, files: {} };
         }
         
-        // 记录该文件的净变化量 (可以是负数)
         this.data.history[todayKey].files[filePath] = diff;
         
         this.recalculateTotal(todayKey);
         this.debouncedSave();
     }
 
-    // [核心修复]：只统计正数贡献
     recalculateTotal(dateKey: string) {
         let dailyTotal = 0;
         const files = this.data.history[dateKey].files;
         for (const f in files) {
-            // 如果单个文件变化量为负（删减内容），视为 0 贡献，不扣减总字数
             if (files[f] > 0) {
                 dailyTotal += files[f];
             }
@@ -165,15 +212,19 @@ export class DataManager {
         return Object.entries(this.data.history).map(([date, stats]) => {
             let value = 0;
             if (excludeFolders && excludeFolders.length > 0) {
-                for (const [filepath, count] of Object.entries(stats.files)) {
-                    const shouldExclude = excludeFolders.some(folder => filepath.startsWith(folder));
-                    // 同样，热力图渲染时也忽略负数
-                    if (!shouldExclude && count > 0) {
-                        value += count;
+                if (stats.files && Object.keys(stats.files).length > 0) {
+                    for (const [filepath, count] of Object.entries(stats.files)) {
+                        const shouldExclude = excludeFolders.some(folder => filepath.startsWith(folder));
+                        if (!shouldExclude && count > 0) {
+                            value += count;
+                        }
                     }
+                } else {
+                    // 若已归档无 files 字典，使用 totalWords
+                    value = stats.totalWords;
                 }
             } else {
-                value = stats.totalWords; // totalWords 已经是处理过的正数累加了
+                value = stats.totalWords;
             }
             return { date: date, value: value };
         });

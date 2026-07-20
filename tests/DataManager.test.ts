@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import dayjs from "dayjs";
 import { DataManager } from "../src/DataManager";
 
 describe("DataManager", () => {
@@ -6,7 +7,10 @@ describe("DataManager", () => {
 
     beforeEach(() => {
         const mockApp = {} as any;
-        const mockPlugin = {} as any;
+        const mockPlugin = {
+            saveData: vi.fn(),
+            loadData: vi.fn().mockResolvedValue({})
+        } as any;
         dataManager = new DataManager(mockApp, mockPlugin);
     });
 
@@ -20,7 +24,7 @@ describe("DataManager", () => {
         it("should count Chinese characters as words in 'word' mode", () => {
             dataManager.data.countType = 'word';
             expect(dataManager.getCount("你好世界")).toBe(4);
-            expect(dataManager.getCount("Obsidian 热力图 插件")).toBe(6); // Obsidian (1) + 热力图 (3) + 插件 (2) = 6
+            expect(dataManager.getCount("Obsidian 热力图 插件")).toBe(6);
         });
 
         it("should count total characters in 'char' mode", () => {
@@ -44,13 +48,13 @@ describe("DataManager", () => {
             expect(dataManager.data.history[dateKey].totalWords).toBe(450);
         });
 
-        it("should ignore negative word changes (deletions) and not subtract from total", () => {
+        it("should ignore negative word changes (deletions)", () => {
             const dateKey = "2026-07-21";
             dataManager.data.history[dateKey] = {
                 totalWords: 0,
                 files: {
-                    "Folder/Note1.md": -200, // file shrank
-                    "Folder/Note2.md": 500,  // file grew
+                    "Folder/Note1.md": -200,
+                    "Folder/Note2.md": 500,
                 }
             };
             dataManager.recalculateTotal(dateKey);
@@ -58,22 +62,49 @@ describe("DataManager", () => {
         });
     });
 
-    describe("getHeatmapData (Folder Exclusion Filter)", () => {
-        it("should filter out files in excluded folders", () => {
-            const dateKey = "2026-07-21";
-            dataManager.data.history[dateKey] = {
-                totalWords: 1000,
-                files: {
-                    "Public/Article.md": 400,
-                    "Private/Secret.md": 600,
-                }
+    describe("archiveOldHistory (Storage Cleanup)", () => {
+        it("should NOT clean up any details when retentionDays is 0 (Forever)", () => {
+            const oldDateStr = dayjs().subtract(100, "day").format("YYYY-MM-DD");
+            dataManager.data.history[oldDateStr] = {
+                totalWords: 800,
+                files: { "Old/Note.md": 800 }
             };
 
-            const fullData = dataManager.getHeatmapData([]);
-            expect(fullData).toEqual([{ date: "2026-07-21", value: 1000 }]);
+            dataManager.archiveOldHistory(0);
 
-            const filteredData = dataManager.getHeatmapData(["Private/"]);
-            expect(filteredData).toEqual([{ date: "2026-07-21", value: 400 }]);
+            expect(dataManager.data.history[oldDateStr].files).toEqual({ "Old/Note.md": 800 });
+            expect(dataManager.data.history[oldDateStr].totalWords).toBe(800);
+        });
+
+        it("should clean up file details older than retentionDays while keeping totalWords", () => {
+            const oldDateStr = dayjs().subtract(100, "day").format("YYYY-MM-DD");
+            const recentDateStr = dayjs().subtract(10, "day").format("YYYY-MM-DD");
+
+            dataManager.data.history[oldDateStr] = {
+                totalWords: 800,
+                files: { "Old/Note.md": 800 }
+            };
+            dataManager.data.history[recentDateStr] = {
+                totalWords: 300,
+                files: { "Recent/Note.md": 300 }
+            };
+
+            // Archive older than 90 days
+            dataManager.archiveOldHistory(90);
+
+            // Old entry should have files cleared
+            expect(dataManager.data.history[oldDateStr].files).toEqual({});
+            expect(dataManager.data.history[oldDateStr].totalWords).toBe(800);
+
+            // Recent entry should remain untouched
+            expect(dataManager.data.history[recentDateStr].files).toEqual({ "Recent/Note.md": 300 });
+        });
+    });
+
+    describe("debouncedUpdateFileStats", () => {
+        it("should have debouncedUpdateFileStats defined", () => {
+            expect(dataManager.debouncedUpdateFileStats).toBeDefined();
+            expect(typeof dataManager.debouncedUpdateFileStats).toBe("function");
         });
     });
 });

@@ -1,0 +1,121 @@
+export type LanguageOption = 'auto' | 'zh' | 'en';
+
+export function getLanguage(setting?: LanguageOption): 'zh' | 'en' {
+    if (setting === 'zh') return 'zh';
+    if (setting === 'en') return 'en';
+    
+    // Default 'auto'
+    if (typeof window !== 'undefined') {
+        const obsLang = (window.localStorage.getItem("language") || navigator.language || "").toLowerCase();
+        if (obsLang.startsWith("zh")) {
+            return "zh";
+        }
+    }
+    return "en";
+}
+
+const translations = {
+    zh: {
+        configTitle: "热力图配置",
+        basicSettings: "基础设置",
+        title: "标题",
+        language: "语言设置 (Language)",
+        languageAuto: "Auto (自动检测)",
+        languageZh: "中文",
+        languageEn: "English",
+        countType: "统计类型",
+        countTypeWord: "Word Count (词数)",
+        countTypeChar: "Character Count (字符数)",
+        countTypeDesc: "警告：切换统计类型将重置今天的统计数据。",
+        dateRangeMode: "日期范围模式",
+        latestDays: "最近天数",
+        fixedYear: "固定年份",
+        year: "年份",
+        days: "天数",
+        dataFilter: "数据过滤与存储",
+        excludeFolders: "排除文件夹",
+        excludeFoldersDesc: "忽略的文件夹目录。每行输入一个文件夹路径。",
+        excludeFoldersPlaceholder: "示例:\nPrivate/Diary\nArchive/\nTemplates",
+        retentionDays: "历史明细保留时长",
+        retentionDaysDesc: "历史笔记编辑路径明细的保留时长。每日总字数将永远保留。",
+        retentionForever: "Forever (永久保留)",
+        retention30: "30 天",
+        retention90: "90 天",
+        retention180: "180 天",
+        retention365: "365 天",
+        styleLayout: "样式与布局",
+        theme: "主题",
+        startOfWeek: "一周起始日",
+        sunday: "周日 (Sunday)",
+        monday: "周一 (Monday)",
+        saturday: "周六 (Saturday)",
+        fillScreen: "填满宽度 (Fill Screen)",
+        showLegend: "显示图例",
+        saveRender: "保存并渲染",
+        less: "少",
+        more: "多",
+        words: "字",
+        files: "文件",
+        noData: "无产出数据",
+        archivedNotice: "明细数据已归档（仅保留总字数）",
+        confirmCleanupTitle: "确认清理历史明细",
+        confirmCleanupMsg: "缩短历史保留期限将永久删除超出天数的笔记明细路径（每日总字数仍将 100% 保留）。确定要执行清理吗？",
+        confirmCleanupBtn: "确认并清理",
+        cancelBtn: "取消",
+        weekNames: ["日", "一", "二", "三", "四", "五", "六"]
+    },
+    en: {
+        configTitle: "Heatmap Configuration",
+        basicSettings: "Basic Settings",
+        title: "Title",
+        language: "Language",
+        languageAuto: "Auto",
+        languageZh: "中文",
+        languageEn: "English",
+        countType: "Count Type",
+        countTypeWord: "Word Count",
+        countTypeChar: "Character Count",
+        countTypeDesc: "Warning: Switching this will reset today's statistics.",
+        dateRangeMode: "Date Range Mode",
+        latestDays: "Latest Days",
+        fixedYear: "Fixed Year",
+        year: "Year",
+        days: "Days",
+        dataFilter: "Data Filter & Storage",
+        excludeFolders: "Exclude Folders",
+        excludeFoldersDesc: "Folders to ignore. Enter one folder path per line.",
+        excludeFoldersPlaceholder: "Example:\nPrivate/Diary\nArchive/\nTemplates",
+        retentionDays: "History Detail Retention",
+        retentionDaysDesc: "Retention period for detailed file edit breakdown. Daily word count totals will always be preserved.",
+        retentionForever: "Forever",
+        retention30: "30 Days",
+        retention90: "90 Days",
+        retention180: "180 Days",
+        retention365: "365 Days",
+        styleLayout: "Style & Layout",
+        theme: "Theme",
+        startOfWeek: "Start of Week",
+        sunday: "Sunday",
+        monday: "Monday",
+        saturday: "Saturday",
+        fillScreen: "Fill the Screen",
+        showLegend: "Show Legend",
+        saveRender: "Save & Render",
+        less: "less",
+        more: "more",
+        words: "words",
+        files: "files",
+        noData: "No output data",
+        archivedNotice: "Detail archived (Total count kept)",
+        confirmCleanupTitle: "Confirm History Cleanup",
+        confirmCleanupMsg: "Reducing the retention period will permanently delete file-level breakdown details for dates older than the selected threshold. The total daily word counts will be preserved. Are you sure you want to proceed?",
+        confirmCleanupBtn: "Confirm & Clean Up",
+        cancelBtn: "Cancel",
+        weekNames: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    }
+};
+
+export function t<K extends keyof typeof translations['en']>(key: K, langSetting?: LanguageOption): typeof translations['en'][K] {
+    const lang = getLanguage(langSetting);
+    return translations[lang][key];
+}

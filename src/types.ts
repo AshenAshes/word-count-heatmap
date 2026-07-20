@@ -1,3 +1,5 @@
+import { LanguageOption } from "./i18n";
+
 export interface CellStyleRule {
     min: number;
     max: number;
@@ -20,8 +22,12 @@ export interface PluginData {
     lastSaveTime: number;
     // 显式记录当前 Session 属于哪一天
     sessionDate: string; 
-    // [核心修复] 持久化保存统计类型，防止重启后因默认值不匹配而重置数据
+    // 持久化保存统计类型
     countType?: CountType;
+    // 历史路径明细保留天数（0 表示永久保留，默认 0）
+    historyRetentionDays?: number;
+    // 语言设置
+    language?: LanguageOption;
 }
 
 export interface HeatmapConfig {
@@ -36,6 +42,8 @@ export interface HeatmapConfig {
     fillTheScreen?: boolean;
     countType?: CountType;
     cellStyleRules?: CellStyleRule[];
+    historyRetentionDays?: number;
+    language?: LanguageOption;
 }
 
 export const THEMES: Record<GraphTheme, string[]> = {

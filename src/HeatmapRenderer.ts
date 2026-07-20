@@ -2,6 +2,7 @@ import { App } from "obsidian";
 import { DataManager } from "./DataManager";
 import dayjs from "dayjs";
 import { HeatmapConfig, mapThemeToRules, CellStyleRule } from "./types";
+import { t } from "./i18n";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import "dayjs/locale/zh-cn";
 
@@ -15,6 +16,7 @@ export class HeatmapRenderer {
         const themeName = config.theme || 'Default';
         const rules = config.cellStyleRules || mapThemeToRules(themeName);
         const startOfWeek = config.startOfWeek ?? 0;
+        const lang = config.language || dataManager.data.language || 'auto';
         
         let startDate: dayjs.Dayjs;
         let endDate: dayjs.Dayjs;
@@ -45,7 +47,7 @@ export class HeatmapRenderer {
         const mainContainer = graphEl.createDiv({ cls: "heatmap-main-container" });
 
         const weekLabelContainer = mainContainer.createDiv({ cls: "heatmap-week-labels" });
-        const weekNames = ["日", "一", "二", "三", "四", "五", "六"];
+        const weekNames = t("weekNames", lang);
         const adjustedWeekNames = [...weekNames.slice(startOfWeek), ...weekNames.slice(0, startOfWeek)];
         
         for (let i = 0; i < 7; i++) {
@@ -89,7 +91,7 @@ export class HeatmapRenderer {
                     
                     if (!isSelected) {
                         cell.addClass('selected');
-                        this.updateInteractionPanel(app, dayStr, dailyData[dayStr], graphEl, config.excludeFolders);
+                        this.updateInteractionPanel(app, dayStr, dailyData[dayStr], graphEl, config.excludeFolders, lang);
                     } else {
                         // Toggle off
                         const panel = graphEl.querySelector(".heatmap-interaction-panel") as HTMLElement;
@@ -104,7 +106,8 @@ export class HeatmapRenderer {
                     cell.style.backgroundColor = matchRule.color;
                 }
                 
-                cell.setAttribute("aria-label", `${dayStr}: ${count}字`);
+                const unitText = t("words", lang);
+                cell.setAttribute("aria-label", `${dayStr}: ${count}${unitText}`);
 
                 if (loopDate.isBefore(startDate) || loopDate.isAfter(endDate)) {
                     cell.addClass("hidden-cell");
@@ -115,7 +118,7 @@ export class HeatmapRenderer {
         }
 
         if (config.showCellRuleIndicators !== false) {
-             this.renderIndicators(graphEl, rules);
+             this.renderIndicators(graphEl, rules, lang);
         }
 
         this.renderInteractionPanel(graphEl);
@@ -137,42 +140,49 @@ export class HeatmapRenderer {
         };
     }
 
-    private static updateInteractionPanel(app: App, date: string, dayStats: any, container: HTMLElement, excludeFolders: string[] = []) {
+    private static updateInteractionPanel(app: App, date: string, dayStats: any, container: HTMLElement, excludeFolders: string[] = [], langSetting?: any) {
         const panel = container.querySelector(".heatmap-interaction-panel") as HTMLElement;
         const summaryEl = panel.querySelector(".interaction-summary");
         const listEl = panel.querySelector(".interaction-list");
         
         if (!panel || !summaryEl || !listEl) return;
 
-        const files = dayStats ? dayStats.files : {};
+        const wordsLabel = t("words", langSetting);
+        const filesLabel = t("files", langSetting);
+
+        const files = dayStats ? (dayStats.files || {}) : {};
         const entries = Object.entries(files) as [string, number][];
         
-        // [核心修复]：过滤逻辑升级
-        // 1. 排除指定的文件夹
-        // 2. 排除计数 <= 0 的文件（即负变化视为0，不显示）
         const validEntries = entries.filter(([path, count]) => {
             if (count <= 0) return false; 
             return !excludeFolders.some(f => path.startsWith(f));
         });
         
-        validEntries.sort((a, b) => b[1] - a[1]); // 按字数降序
+        validEntries.sort((a, b) => b[1] - a[1]);
 
-        // 重新计算用于显示的统计数据 (仅包含正向贡献)
-        const totalWords = validEntries.reduce((acc, cur) => acc + cur[1], 0);
-        const fileCount = validEntries.length;
+        let totalWords = validEntries.reduce((acc, cur) => acc + cur[1], 0);
+        let fileCount = validEntries.length;
+
+        // 如果包含历史归档总字数 (files 已经被清理，但 totalWords 存在)
+        const isArchived = dayStats && Object.keys(files).length === 0 && dayStats.totalWords > 0;
+        if (isArchived) {
+            totalWords = dayStats.totalWords;
+        }
 
         summaryEl.innerHTML = `
             <div class="summary-date">${date}</div>
             <div class="summary-details">
-                <span class="summary-val">${totalWords}</span> <span class="summary-unit">字</span>
+                <span class="summary-val">${totalWords}</span> <span class="summary-unit">${wordsLabel}</span>
                 <span class="summary-sep">·</span>
-                <span class="summary-val">${fileCount}</span> <span class="summary-unit">文件</span>
+                <span class="summary-val">${fileCount}</span> <span class="summary-unit">${filesLabel}</span>
             </div>
         `;
 
         listEl.empty();
-        if (validEntries.length === 0) {
-            listEl.createDiv({ cls: "interaction-empty", text: "无产出数据" });
+        if (isArchived) {
+            listEl.createDiv({ cls: "interaction-empty", text: t("archivedNotice", langSetting) });
+        } else if (validEntries.length === 0) {
+            listEl.createDiv({ cls: "interaction-empty", text: t("noData", langSetting) });
         } else {
             const ul = listEl.createEl("ul");
             for (const [path, count] of validEntries) {
@@ -191,8 +201,7 @@ export class HeatmapRenderer {
                     app.workspace.openLinkText(path, "", false);
                 };
 
-                const countClass = "positive"; // 因为只显示正数，所以肯定是 positive
-                li.createSpan({ cls: `file-count ${countClass}`, text: `+${count}` });
+                li.createSpan({ cls: "file-count positive", text: `+${count}` });
             }
         }
 
@@ -209,9 +218,9 @@ export class HeatmapRenderer {
         return activeRules[activeRules.length - 1];
     }
 
-    private static renderIndicators(container: HTMLElement, rules: CellStyleRule[]) {
+    private static renderIndicators(container: HTMLElement, rules: CellStyleRule[], langSetting?: any) {
         const indicatorContainer = container.createDiv({ cls: "heatmap-indicators" });
-        indicatorContainer.createSpan({ text: "less", cls: "indicator-text" });
+        indicatorContainer.createSpan({ text: t("less", langSetting), cls: "indicator-text" });
         
         rules.forEach((rule, index) => {
             const cell = indicatorContainer.createDiv({ cls: "indicator-cell" });
@@ -222,6 +231,6 @@ export class HeatmapRenderer {
             }
         });
         
-        indicatorContainer.createSpan({ text: "more", cls: "indicator-text" });
+        indicatorContainer.createSpan({ text: t("more", langSetting), cls: "indicator-text" });
     }
 }
