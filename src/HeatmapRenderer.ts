@@ -66,17 +66,78 @@ export class HeatmapRenderer {
         let loopDate = startDate.day(startOfWeek);
         if (loopDate.isAfter(startDate)) loopDate = loopDate.subtract(7, 'day');
         const endLoopDate = endDate.endOf('week').day(startOfWeek === 0 ? 6 : startOfWeek - 1);
-        let currentMonth = -1;
 
-        while (loopDate.isBefore(endLoopDate) || loopDate.isSame(endLoopDate, 'day')) {
-            const weekColumn = gridContainer.createDiv({ cls: "heatmap-column" });
-            const firstDayOfWeek = loopDate;
-            const monthOfThisWeek = firstDayOfWeek.month();
+        // 1. 预解析所有周列数据
+        const weekColumnsData: { firstDayOfWeek: dayjs.Dayjs; month: number }[] = [];
+        let tempDate = loopDate;
+        while (tempDate.isBefore(endLoopDate) || tempDate.isSame(endLoopDate, 'day')) {
+            weekColumnsData.push({
+                firstDayOfWeek: tempDate,
+                month: tempDate.month()
+            });
+            tempDate = tempDate.add(7, 'day');
+        }
+
+        // 2. 智能决定哪些周列可以安全渲染 Month Label (防重叠算法)
+        const shouldRenderMonthLabel: boolean[] = new Array(weekColumnsData.length).fill(false);
+        let lastLabelCol = -999;
+        let currentM = -1;
+
+        for (let col = 0; col < weekColumnsData.length; col++) {
+            const { firstDayOfWeek, month } = weekColumnsData[col];
+            if (month !== currentM && firstDayOfWeek.isSameOrAfter(startDate)) {
+                currentM = month;
+                if (lastLabelCol === -999) {
+                    // 第一个月份：如果在它后面只残存 1 周就切换到新月份 (col = 0 时 nextMonth 在 col = 1)，跳过首个微型残月
+                    let weeksInThisMonth = 0;
+                    for (let k = col; k < weekColumnsData.length; k++) {
+                        if (weekColumnsData[k].month === month) weeksInThisMonth++;
+                        else break;
+                    }
+                    if (weeksInThisMonth >= 2 || col > 0) {
+                        shouldRenderMonthLabel[col] = true;
+                        lastLabelCol = col;
+                    }
+                } else {
+                    // 后续月份：只要距离上一个绘制的标签相隔 >= 2 列 (>= 22px)，即可安全绘制
+                    if (col - lastLabelCol >= 2) {
+                        shouldRenderMonthLabel[col] = true;
+                        lastLabelCol = col;
+                    }
+                }
+            }
+        }
+
+        // 3. 兜底保护：如果整个图表中没有任何列绘制了月份标签 (如短日期范围 30 天)，确保绘制主月份标签
+        if (!shouldRenderMonthLabel.includes(true) && weekColumnsData.length > 0) {
+            const monthCounts: Record<number, { firstCol: number; count: number }> = {};
+            for (let col = 0; col < weekColumnsData.length; col++) {
+                const m = weekColumnsData[col].month;
+                if (!monthCounts[m]) {
+                    monthCounts[m] = { firstCol: col, count: 0 };
+                }
+                monthCounts[m].count++;
+            }
             
-            if (monthOfThisWeek !== currentMonth && firstDayOfWeek.isSameOrAfter(startDate)) {
-                currentMonth = monthOfThisWeek;
+            let maxCount = 0;
+            let bestCol = 0;
+            for (const m in monthCounts) {
+                if (monthCounts[m].count > maxCount) {
+                    maxCount = monthCounts[m].count;
+                    bestCol = monthCounts[m].firstCol;
+                }
+            }
+            shouldRenderMonthLabel[bestCol] = true;
+        }
+
+        // 4. 渲染 DOM 网格
+        for (let col = 0; col < weekColumnsData.length; col++) {
+            const weekColumn = gridContainer.createDiv({ cls: "heatmap-column" });
+            const { firstDayOfWeek } = weekColumnsData[col];
+
+            if (shouldRenderMonthLabel[col]) {
                 const monthLabel = weekColumn.createDiv({ cls: "month-label" });
-                monthLabel.innerText = firstDayOfWeek.locale(dayjsLocale).format("MMM"); 
+                monthLabel.innerText = firstDayOfWeek.locale(dayjsLocale).format("MMM");
             }
 
             for (let i = 0; i < 7; i++) {
@@ -94,7 +155,6 @@ export class HeatmapRenderer {
                         cell.addClass('selected');
                         this.updateInteractionPanel(app, dayStr, dailyData[dayStr], graphEl, config.excludeFolders, lang);
                     } else {
-                        // Toggle off
                         const panel = graphEl.querySelector(".heatmap-interaction-panel") as HTMLElement;
                         if (panel) panel.style.display = "none";
                     }
