@@ -32,6 +32,16 @@ describe("DataManager", () => {
             expect(dataManager.getCount("Hello world")).toBe(11);
             expect(dataManager.getCount("你好世界")).toBe(4);
         });
+
+        it("should default to 'char' for Chinese language and 'word' for English when unconfigured", async () => {
+            const dmZh = new DataManager({} as any, { saveData: vi.fn(), loadData: vi.fn().mockResolvedValue({ language: 'zh' }) } as any);
+            await dmZh.loadData();
+            expect(dmZh.data.countType).toBe("char");
+
+            const dmEn = new DataManager({} as any, { saveData: vi.fn(), loadData: vi.fn().mockResolvedValue({ language: 'en' }) } as any);
+            await dmEn.loadData();
+            expect(dmEn.data.countType).toBe("word");
+        });
     });
 
     describe("recalculateTotal (Positive Contribution Logic)", () => {

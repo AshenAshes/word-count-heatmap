@@ -2,12 +2,11 @@ import { App } from "obsidian";
 import { DataManager } from "./DataManager";
 import dayjs from "dayjs";
 import { HeatmapConfig, mapThemeToRules, CellStyleRule } from "./types";
-import { t } from "./i18n";
+import { t, getLanguage } from "./i18n";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import "dayjs/locale/zh-cn";
 
 dayjs.extend(isSameOrAfter);
-dayjs.locale("zh-cn");
 
 export class HeatmapRenderer {
     static render(app: App, container: HTMLElement, dataManager: DataManager, config: HeatmapConfig) {
@@ -17,6 +16,8 @@ export class HeatmapRenderer {
         const rules = config.cellStyleRules || mapThemeToRules(themeName);
         const startOfWeek = config.startOfWeek ?? 0;
         const lang = config.language || dataManager.data.language || 'auto';
+        const effectiveLang = getLanguage(lang);
+        const dayjsLocale = effectiveLang === 'zh' ? 'zh-cn' : 'en';
         
         let startDate: dayjs.Dayjs;
         let endDate: dayjs.Dayjs;
@@ -75,7 +76,7 @@ export class HeatmapRenderer {
             if (monthOfThisWeek !== currentMonth && firstDayOfWeek.isSameOrAfter(startDate)) {
                 currentMonth = monthOfThisWeek;
                 const monthLabel = weekColumn.createDiv({ cls: "month-label" });
-                monthLabel.innerText = firstDayOfWeek.format("MMM"); 
+                monthLabel.innerText = firstDayOfWeek.locale(dayjsLocale).format("MMM"); 
             }
 
             for (let i = 0; i < 7; i++) {
@@ -107,7 +108,8 @@ export class HeatmapRenderer {
                 }
                 
                 const unitText = t("words", lang);
-                cell.setAttribute("aria-label", `${dayStr}: ${count}${unitText}`);
+                const spacing = effectiveLang === 'en' ? ' ' : '';
+                cell.setAttribute("aria-label", `${dayStr}: ${count}${spacing}${unitText}`);
 
                 if (loopDate.isBefore(startDate) || loopDate.isAfter(endDate)) {
                     cell.addClass("hidden-cell");
@@ -121,17 +123,17 @@ export class HeatmapRenderer {
              this.renderIndicators(graphEl, rules, lang);
         }
 
-        this.renderInteractionPanel(graphEl);
+        this.renderInteractionPanel(graphEl, lang);
     }
 
-    private static renderInteractionPanel(container: HTMLElement) {
+    private static renderInteractionPanel(container: HTMLElement, langSetting?: any) {
         const panel = container.createDiv({ cls: "heatmap-interaction-panel" });
         panel.style.display = "none"; 
 
         panel.createDiv({ cls: "interaction-summary" });
         panel.createDiv({ cls: "interaction-list" });
         
-        const closeBtn = panel.createDiv({ cls: "interaction-close-btn", title: "Close" });
+        const closeBtn = panel.createDiv({ cls: "interaction-close-btn", title: t("cancelBtn", langSetting) });
         closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
         closeBtn.onclick = (e) => {
             e.stopPropagation();

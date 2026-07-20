@@ -97,7 +97,7 @@ export class HeatmapConfigurationModal extends Modal {
                 .addDropdown(drop => drop
                     .addOption("word", t("countTypeWord", lang))
                     .addOption("char", t("countTypeChar", lang))
-                    .setValue(this.config.countType || "word")
+                    .setValue(this.config.countType || (getLanguage(lang) === 'zh' ? 'char' : 'word'))
                     .onChange(v => this.config.countType = v as any));
 
             new Setting(container)

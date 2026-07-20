@@ -6,5 +6,8 @@ export default defineConfig({
         alias: {
             obsidian: path.resolve(__dirname, "tests/mocks/obsidian.ts")
         }
+    },
+    test: {
+        include: ["tests/**/*.test.ts"]
     }
 });

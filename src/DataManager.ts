@@ -1,7 +1,7 @@
 import { App, TFile, Plugin, debounce, Debouncer } from "obsidian";
 import dayjs from "dayjs";
 import { CountType, PluginData } from "./types";
-import { LanguageOption } from "./i18n";
+import { LanguageOption, getLanguage } from "./i18n";
 
 const DEFAULT_DATA: PluginData = {
     history: {},
@@ -36,15 +36,15 @@ export class DataManager {
     async loadData() {
         const loaded = await this.plugin.loadData();
         this.data = Object.assign({}, DEFAULT_DATA, loaded);
-        
-        if (!this.data.countType) {
-            this.data.countType = 'word';
+        if (!this.data.language) {
+            this.data.language = 'auto';
+        }
+        if (!loaded || !loaded.countType) {
+            const currentLang = getLanguage(this.data.language);
+            this.data.countType = currentLang === 'zh' ? 'char' : 'word';
         }
         if (this.data.historyRetentionDays === undefined) {
             this.data.historyRetentionDays = 0;
-        }
-        if (!this.data.language) {
-            this.data.language = 'auto';
         }
 
         // 跨日检测与历史数据归档瘦身
@@ -123,9 +123,14 @@ export class DataManager {
         }
     }
 
+    public onLanguageChange?: () => void;
+
     setLanguage(lang: LanguageOption) {
         this.data.language = lang;
         this.saveData();
+        if (this.onLanguageChange) {
+            this.onLanguageChange();
+        }
     }
 
     setHistoryRetentionDays(days: number) {

@@ -7,14 +7,19 @@ import { t } from "./i18n";
 
 class SourceCodeModal extends Modal {
     content: string;
-    constructor(app: App, content: string) { super(app); this.content = content; }
+    langSetting?: any;
+    constructor(app: App, content: string, langSetting?: any) {
+        super(app);
+        this.content = content;
+        this.langSetting = langSetting;
+    }
     onOpen() {
         const { contentEl } = this;
-        contentEl.createEl("h2", { text: "Heatmap Source Code" });
+        contentEl.createEl("h2", { text: t("sourceCodeModalTitle", this.langSetting) });
         const textArea = contentEl.createEl("textarea", { cls: "heatmap-source-textarea" });
         textArea.value = this.content;
         textArea.readOnly = true;
-        new Setting(contentEl).setDesc("Copy this block to share or edit manually.");
+        new Setting(contentEl).setDesc(t("sourceCodeModalDesc", this.langSetting));
     }
     onClose() { this.contentEl.empty(); }
 }
@@ -62,10 +67,17 @@ export default class WordHeatmapPlugin extends Plugin {
              })
          );
 
-        // 注册控制台命令：插入字数热力图代码块 (Ctrl+P / Command Palette)
+        // 监听语言切换，实时动态刷新 Ctrl+P 命令名称
+        this.dataManager.onLanguageChange = () => this.registerCommands();
+
+        // 注册控制台命令：插入字数热力图 (Ctrl+P / Command Palette)
+        this.registerCommands();
+    }
+
+    registerCommands() {
         this.addCommand({
             id: "insert-word-heatmap",
-            name: t("insertCommandName", this.dataManager.data.language),
+            name: t("insertCommandName", 'auto'), // 严格跟随 Obsidian 原生系统环境语言
             editorCallback: (editor) => {
                 const codeBlock = "```word-heatmap\n```\n";
                 editor.replaceSelection(codeBlock);
@@ -74,13 +86,14 @@ export default class WordHeatmapPlugin extends Plugin {
     }
 
     mountButtons(el: HTMLElement, config: HeatmapConfig, sourceCode: string, ctx: MarkdownPostProcessorContext) {
+        const lang = config.language || this.dataManager.data.language || 'auto';
         const btnContainer = document.createElement("div");
         btnContainer.className = "heatmap-buttons-container";
         
         // 1. 配置按钮
         const configBtn = document.createElement("div");
         configBtn.className = "heatmap-btn";
-        configBtn.setAttribute("aria-label", "Configure");
+        configBtn.setAttribute("aria-label", t("configureLabel", lang));
         
         const settingsIcon = getIcon("settings") || getIcon("gear");
         if (settingsIcon) {
@@ -99,7 +112,7 @@ export default class WordHeatmapPlugin extends Plugin {
         // 2. 源码按钮
         const codeBtn = document.createElement("div");
         codeBtn.className = "heatmap-btn";
-        codeBtn.setAttribute("aria-label", "View Source");
+        codeBtn.setAttribute("aria-label", t("viewSourceLabel", lang));
 
         const codeIcon = getIcon("code"); 
         if (codeIcon) {
@@ -110,7 +123,7 @@ export default class WordHeatmapPlugin extends Plugin {
 
         codeBtn.onclick = (e) => {
             e.stopPropagation();
-            new SourceCodeModal(this.app, "```word-heatmap\n" + sourceCode + "\n```").open();
+            new SourceCodeModal(this.app, "```word-heatmap\n" + sourceCode + "\n```", lang).open();
         };
 
         btnContainer.appendChild(configBtn);
@@ -188,7 +201,7 @@ export default class WordHeatmapPlugin extends Plugin {
             }
         }
 
-        new Notice("Word Heatmap: 保存失败。无法定位代码块来源。");
+        new Notice(t("saveFailedNotice", this.dataManager.data.language));
     }
 
     async onunload() { await this.dataManager.saveData(); }
