@@ -62,6 +62,7 @@ const translations = {
         confirmCleanupMsg: "缩短历史保留期限将永久删除超出天数的笔记明细路径（每日总字数仍将 100% 保留）。确定要执行清理吗？",
         confirmCleanupBtn: "确认并清理",
         cancelBtn: "取消",
+        insertCommandName: "插入字数热力图",
         weekNames: ["日", "一", "二", "三", "四", "五", "六"]
     },
     en: {
@@ -111,6 +112,7 @@ const translations = {
         confirmCleanupMsg: "Reducing the retention period will permanently delete file-level breakdown details for dates older than the selected threshold. The total daily word counts will be preserved. Are you sure you want to proceed?",
         confirmCleanupBtn: "Confirm & Clean Up",
         cancelBtn: "Cancel",
+        insertCommandName: "Insert Word Heatmap",
         weekNames: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     }
 };

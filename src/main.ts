@@ -3,6 +3,7 @@ import { DataManager } from "./DataManager";
 import { HeatmapRenderer } from "./HeatmapRenderer";
 import { HeatmapConfig } from "./types";
 import { HeatmapConfigurationModal } from "./HeatmapConfigurationModal";
+import { t } from "./i18n";
 
 class SourceCodeModal extends Modal {
     content: string;
@@ -60,6 +61,16 @@ export default class WordHeatmapPlugin extends Plugin {
                  }
              })
          );
+
+        // 注册控制台命令：插入字数热力图代码块 (Ctrl+P / Command Palette)
+        this.addCommand({
+            id: "insert-word-heatmap",
+            name: t("insertCommandName", this.dataManager.data.language),
+            editorCallback: (editor) => {
+                const codeBlock = "```word-heatmap\n```\n";
+                editor.replaceSelection(codeBlock);
+            }
+        });
     }
 
     mountButtons(el: HTMLElement, config: HeatmapConfig, sourceCode: string, ctx: MarkdownPostProcessorContext) {
