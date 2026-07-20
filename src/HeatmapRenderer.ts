@@ -13,7 +13,7 @@ export class HeatmapRenderer {
         container.empty();
         
         const themeName = config.theme || 'Default';
-        const rules = config.cellStyleRules || mapThemeToRules(themeName);
+        const rules = config.cellStyleRules || mapThemeToRules(themeName, config.thresholds);
         const startOfWeek = config.startOfWeek ?? 0;
         const lang = config.language || dataManager.data.language || 'auto';
         const effectiveLang = getLanguage(lang);

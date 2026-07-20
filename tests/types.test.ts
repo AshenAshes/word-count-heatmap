@@ -25,4 +25,22 @@ describe("types & mapThemeToRules", () => {
         expect(rules[3]).toEqual({ min: 1000, max: 3000, color: THEMES.Default[3], text: "" });
         expect(rules[4]).toEqual({ min: 3000, max: 9999999, color: THEMES.Default[4], text: "" });
     });
+
+    it("should accept valid custom thresholds and map them into rules", () => {
+        const rules = mapThemeToRules("Default", [100, 500, 1500]);
+        expect(rules[1]).toEqual({ min: 1, max: 100, color: THEMES.Default[1], text: "" });
+        expect(rules[2]).toEqual({ min: 100, max: 500, color: THEMES.Default[2], text: "" });
+        expect(rules[3]).toEqual({ min: 500, max: 1500, color: THEMES.Default[3], text: "" });
+        expect(rules[4]).toEqual({ min: 1500, max: 9999999, color: THEMES.Default[4], text: "" });
+    });
+
+    it("should sanitize and auto-correct contradictory user thresholds (e.g. non-increasing or negative)", () => {
+        const rules = mapThemeToRules("Default", [500, 300, 200]);
+        expect(rules[1].max).toBe(500);
+        expect(rules[2].min).toBe(500);
+        expect(rules[2].max).toBe(1000);
+        expect(rules[3].min).toBe(1000);
+        expect(rules[3].max).toBe(3000);
+        expect(rules[4].min).toBe(3000);
+    });
 });

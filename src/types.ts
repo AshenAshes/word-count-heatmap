@@ -44,6 +44,7 @@ export interface HeatmapConfig {
     cellStyleRules?: CellStyleRule[];
     historyRetentionDays?: number;
     language?: LanguageOption;
+    thresholds?: [number, number, number];
 }
 
 export const THEMES: Record<GraphTheme, string[]> = {
@@ -54,13 +55,26 @@ export const THEMES: Record<GraphTheme, string[]> = {
     Wine:    ["#ebedf0", "#d8b0b3", "#c78089", "#ac4c61", "#830738"]
 };
 
-export const mapThemeToRules = (theme: GraphTheme): CellStyleRule[] => {
+export function sanitizeThresholds(raw?: any): [number, number, number] {
+    let t1 = parseInt(raw?.[0], 10);
+    let t2 = parseInt(raw?.[1], 10);
+    let t3 = parseInt(raw?.[2], 10);
+
+    if (isNaN(t1) || t1 < 1) t1 = 200;
+    if (isNaN(t2) || t2 <= t1) t2 = Math.max(t1 + 1, 1000);
+    if (isNaN(t3) || t3 <= t2) t3 = Math.max(t2 + 1, 3000);
+
+    return [t1, t2, t3];
+}
+
+export const mapThemeToRules = (theme: GraphTheme, rawThresholds?: any): CellStyleRule[] => {
     const colors = THEMES[theme] || THEMES.Default;
+    const [t1, t2, t3] = sanitizeThresholds(rawThresholds);
     return [
         { min: 0, max: 1, color: colors[0], text: "" },
-        { min: 1, max: 200, color: colors[1], text: "" },
-        { min: 200, max: 1000, color: colors[2], text: "" },
-        { min: 1000, max: 3000, color: colors[3], text: "" },
-        { min: 3000, max: 9999999, color: colors[4], text: "" }
+        { min: 1, max: t1, color: colors[1], text: "" },
+        { min: t1, max: t2, color: colors[2], text: "" },
+        { min: t2, max: t3, color: colors[3], text: "" },
+        { min: t3, max: 9999999, color: colors[4], text: "" }
     ];
 };

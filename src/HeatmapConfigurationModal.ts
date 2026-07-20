@@ -1,7 +1,7 @@
-import { App, Modal, Setting } from "obsidian";
-import { HeatmapConfig, GraphTheme, THEMES } from "./types";
+import { App, Modal, Setting, Notice } from "obsidian";
+import { HeatmapConfig, GraphTheme, THEMES, sanitizeThresholds } from "./types";
 import { DataManager } from "./DataManager";
-import { t, LanguageOption } from "./i18n";
+import { t, LanguageOption, getLanguage } from "./i18n";
 
 class ConfirmationModal extends Modal {
     private titleText: string;
@@ -51,15 +51,26 @@ export class HeatmapConfigurationModal extends Modal {
     constructor(app: App, dataManager: DataManager, config: HeatmapConfig, onSubmit: (result: HeatmapConfig) => void) {
         super(app);
         this.dataManager = dataManager;
-        this.config = Object.assign({}, config);
-        
-        // 如果配置中没有明确属性，尝试同步 dataManager 现有的全局设置
-        if (this.config.historyRetentionDays === undefined) {
-            this.config.historyRetentionDays = dataManager.data.historyRetentionDays ?? 0;
-        }
-        if (!this.config.language) {
-            this.config.language = dataManager.data.language ?? 'auto';
-        }
+
+        const currentLang = config.language || dataManager.data.language || 'auto';
+        const defaultCountType = dataManager.data.countType || (getLanguage(currentLang) === 'zh' ? 'char' : 'word');
+        const defaultThresholds = sanitizeThresholds(config.thresholds);
+
+        // [修复] 预置全量默认配置项，确保插入空 heatmap 代码块时配置菜单能全量初始化并显示所有选项
+        this.config = Object.assign({
+            dateRangeType: 'latest_days',
+            days: 365,
+            year: new Date().getFullYear(),
+            theme: 'Default',
+            startOfWeek: 0,
+            showCellRuleIndicators: true,
+            fillTheScreen: false,
+            excludeFolders: [],
+            historyRetentionDays: dataManager.data.historyRetentionDays ?? 0,
+            language: currentLang,
+            countType: defaultCountType,
+            thresholds: defaultThresholds
+        }, config);
 
         this.originalRetention = this.config.historyRetentionDays ?? 0;
         this.onSubmit = onSubmit;
@@ -184,6 +195,44 @@ export class HeatmapConfigurationModal extends Modal {
                 .addToggle(t => t.setValue(this.config.showCellRuleIndicators !== false).onChange(v => this.config.showCellRuleIndicators = v));
         });
 
+        // --- 4. Color Shading Intervals (最下方) ---
+        this.createSection(contentEl, t("colorThresholds", lang), (container) => {
+            const currentThresholds = sanitizeThresholds(this.config.thresholds);
+
+            new Setting(container)
+                .setDesc(t("colorThresholdsDesc", lang));
+
+            new Setting(container)
+                .setName(t("threshold1", lang))
+                .addText(text => text
+                    .setPlaceholder("200")
+                    .setValue(currentThresholds[0].toString())
+                    .onChange(v => {
+                        currentThresholds[0] = parseInt(v, 10);
+                        this.config.thresholds = currentThresholds;
+                    }));
+
+            new Setting(container)
+                .setName(t("threshold2", lang))
+                .addText(text => text
+                    .setPlaceholder("1000")
+                    .setValue(currentThresholds[1].toString())
+                    .onChange(v => {
+                        currentThresholds[1] = parseInt(v, 10);
+                        this.config.thresholds = currentThresholds;
+                    }));
+
+            new Setting(container)
+                .setName(t("threshold3", lang))
+                .addText(text => text
+                    .setPlaceholder("3000")
+                    .setValue(currentThresholds[2].toString())
+                    .onChange(v => {
+                        currentThresholds[2] = parseInt(v, 10);
+                        this.config.thresholds = currentThresholds;
+                    }));
+        });
+
         // Save Button
         new Setting(contentEl)
             .addButton(btn => btn
@@ -195,6 +244,15 @@ export class HeatmapConfigurationModal extends Modal {
     }
 
     private handleSave(lang: LanguageOption) {
+        const rawT = this.config.thresholds;
+        const cleanT = sanitizeThresholds(rawT);
+
+        // 如果用户输入的阶梯阈值存在矛盾/无效配置 (如非正整数或非递增)，进行自动修正并提示
+        if (rawT && (rawT[0] !== cleanT[0] || rawT[1] !== cleanT[1] || rawT[2] !== cleanT[2])) {
+            new Notice(t("invalidThresholdNotice", lang));
+        }
+        this.config.thresholds = cleanT;
+
         const newRetention = this.config.historyRetentionDays ?? 0;
 
         // 如果用户将保留期从“永久(0)”修改为了具体天数，或者将天数改小了（意味着要物理清理历史明细）
@@ -229,6 +287,7 @@ export class HeatmapConfigurationModal extends Modal {
 
     createSection(parent: HTMLElement, title: string, renderBody: (container: HTMLElement) => void) {
         const details = parent.createEl("details", { cls: "config-section" });
+        details.open = true;
         details.setAttribute("open", ""); 
         details.createEl("summary", { text: title });
         const container = details.createDiv({ cls: "config-section-body" });
