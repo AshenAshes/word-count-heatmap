@@ -1,0 +1,10 @@
+{
+    "id": "obsidian-word-heatmap",
+    "name": "Word Count Heatmap",
+    "version": "1.0.0",
+    "minAppVersion": "1.3.0",
+    "description": "基于每日字数生成Github风格热力图",
+    "author": "Aluxes",
+    "authorUrl": "",
+    "isDesktopOnly": false
+}

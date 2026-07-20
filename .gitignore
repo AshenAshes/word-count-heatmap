@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# Build outputs
+main.js
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Testing & logs
+coverage/
+*.log

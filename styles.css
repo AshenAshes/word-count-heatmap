@@ -1,0 +1,404 @@
+/* --- 基础容器 --- */
+.word-heatmap-graph {
+    background-color: var(--background-primary);
+    padding: 16px;
+    border: none;
+    border-radius: 6px;
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================================
+   [Canvas/Embed 终极美化] 彻底隐藏文件名和边框
+   ============================================================ */
+
+/* 1. 隐藏 Canvas 卡片外壳的标题栏 (Node Label) */
+.canvas-node:has(.word-heatmap-block) .canvas-node-label {
+    display: none !important;
+}
+
+/* 2. [核心修复] 针对嵌入视图内部，隐藏所有可能的标题栏元素 */
+/* 使用 :has() 检测：如果嵌入的内容里有热力图，就隐藏这个嵌入框的标题 */
+.markdown-embed:has(.word-heatmap-block) .markdown-embed-header,
+.markdown-embed:has(.word-heatmap-block) .file-embed-title,
+.markdown-embed:has(.word-heatmap-block) .markdown-embed-link,
+.markdown-embed:has(.word-heatmap-block) .markdown-embed-info {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+}
+
+/* 3. 移除嵌入容器的边框、背景和多余间距，让它看起来像原生控件 */
+.markdown-embed:has(.word-heatmap-block) {
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+}
+
+/* 4. 移除预览视图的内容内边距 */
+.markdown-embed:has(.word-heatmap-block) .markdown-preview-view {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* ============================================================ */
+
+/* 隐藏原生编辑按钮 */
+.word-heatmap-block .edit-block-button,
+.block-language-word-heatmap .edit-block-button {
+    display: none !important;
+}
+
+/* --- 按钮容器 --- */
+.heatmap-buttons-container {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    z-index: 10;
+    transition: opacity 0.2s ease-in-out;
+    opacity: 0;
+}
+
+.word-heatmap-graph:hover .heatmap-buttons-container {
+    opacity: 1;
+}
+
+/* --- 按钮样式 --- */
+.heatmap-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--background-modifier-border);
+    transition: all 0.2s ease-in-out;
+}
+
+.heatmap-btn:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+    transform: translateY(-1px);
+}
+
+.heatmap-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2px;
+}
+
+/* --- 交互面板 --- */
+.heatmap-interaction-panel {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    font-size: 12px;
+    min-height: 40px;
+    position: relative;
+}
+
+.interaction-summary {
+    flex: 0 0 40%;
+    color: var(--text-normal);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-right: 12px;
+    border-right: 1px dashed var(--background-modifier-border);
+}
+
+.summary-date {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.summary-details {
+    color: var(--text-muted);
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+}
+
+.summary-val {
+    color: var(--text-normal);
+    font-weight: 500;
+}
+
+.summary-sep {
+    margin: 0 4px;
+    font-weight: bold;
+}
+
+.interaction-list {
+    flex: 1;
+    padding-left: 12px;
+    padding-right: 20px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.interaction-list ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.interaction-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.interaction-list li:last-child {
+    border-bottom: none;
+}
+
+.file-name {
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+}
+
+.file-name.clickable {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.file-name.clickable:hover {
+    color: var(--interactive-accent);
+    text-decoration: underline;
+}
+
+.file-count {
+    font-family: var(--font-monospace);
+    font-size: 11px;
+}
+
+.file-count.positive {
+    color: var(--text-success);
+}
+
+.file-count.negative {
+    color: var(--text-error);
+}
+
+.interaction-empty {
+    color: var(--text-faint);
+    font-style: italic;
+    padding: 4px 0;
+}
+
+.interaction-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.interaction-close-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-error);
+}
+
+/* --- 选中格子 --- */
+.heatmap-cell.selected {
+    box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--interactive-accent);
+    z-index: 5;
+    position: relative;
+}
+
+/* --- Modal --- */
+.heatmap-source-textarea {
+    width: 100%;
+    height: 300px;
+    font-family: var(--font-monospace);
+    font-size: 13px;
+    background-color: var(--background-primary);
+}
+
+.config-section {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.config-section summary {
+    background-color: var(--background-secondary);
+    padding: 8px 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+}
+
+.config-section-body {
+    padding: 10px;
+    background-color: var(--background-primary);
+}
+
+/* --- 热力图布局 --- */
+.heatmap-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-normal);
+}
+
+.heatmap-main-container {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    width: 100%;
+}
+
+.heatmap-week-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 20px;
+    flex-shrink: 0;
+}
+
+.week-label {
+    height: 9px;
+    line-height: 9px;
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: right;
+    width: 24px;
+    padding-right: 4px;
+}
+
+.heatmap-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.heatmap-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.heatmap-grid::-webkit-scrollbar {
+    height: 4px;
+}
+
+.heatmap-grid::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 2px;
+}
+
+.heatmap-column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: relative;
+    padding-top: 20px;
+}
+
+.month-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    line-height: 16px;
+    overflow: visible;
+    pointer-events: none;
+}
+
+/* --- 单元格样式 --- */
+.heatmap-cell {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    box-sizing: border-box;
+    transition: opacity 0.2s;
+}
+
+.heatmap-cell:hover {
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.heatmap-cell.hidden-cell {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Fill The Screen 模式适配 */
+.word-heatmap-graph.fill-the-screen .heatmap-grid {
+    width: 100%;
+    overflow-x: hidden;
+    gap: 2px;
+}
+
+.word-heatmap-graph.fill-the-screen .heatmap-column {
+    flex: 1;
+    min-width: 0;
+}
+
+.word-heatmap-graph.fill-the-screen .heatmap-cell {
+    width: 100%;
+    height: 9px;
+    border-radius: 2px;
+}
+
+/* 颜色 */
+.heatmap-cell.empty,
+.indicator-cell.empty {
+    background-color: rgba(235, 237, 240, 0.85);
+}
+
+.theme-dark .heatmap-cell.empty,
+.theme-dark .indicator-cell.empty {
+    background-color: rgba(71, 71, 71, 0.6);
+}
+
+.heatmap-indicators {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.indicator-cell {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
