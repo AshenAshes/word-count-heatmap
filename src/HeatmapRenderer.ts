@@ -78,29 +78,27 @@ export class HeatmapRenderer {
             tempDate = tempDate.add(7, 'day');
         }
 
-        // 2. 智能决定哪些周列可以安全渲染 Month Label (防重叠算法)
+        // 2. 智能决定哪些周列可以安全渲染 Month Label (彻底修复跳月与重叠)
         const shouldRenderMonthLabel: boolean[] = new Array(weekColumnsData.length).fill(false);
         let lastLabelCol = -999;
         let currentM = -1;
 
         for (let col = 0; col < weekColumnsData.length; col++) {
-            const { firstDayOfWeek, month } = weekColumnsData[col];
-            if (month !== currentM && firstDayOfWeek.isSameOrAfter(startDate)) {
+            const { month } = weekColumnsData[col];
+            if (month !== currentM) {
                 currentM = month;
-                if (lastLabelCol === -999) {
-                    // 第一个月份：如果在它后面只残存 1 周就切换到新月份 (col = 0 时 nextMonth 在 col = 1)，跳过首个微型残月
-                    let weeksInThisMonth = 0;
-                    for (let k = col; k < weekColumnsData.length; k++) {
-                        if (weekColumnsData[k].month === month) weeksInThisMonth++;
-                        else break;
-                    }
-                    if (weeksInThisMonth >= 2 || col > 0) {
-                        shouldRenderMonthLabel[col] = true;
-                        lastLabelCol = col;
-                    }
-                } else {
-                    // 后续月份：只要距离上一个绘制的标签相隔 >= 2 列 (>= 22px)，即可安全绘制
-                    if (col - lastLabelCol >= 2) {
+
+                // 计算当前月份在后续视图中占据的总周数
+                let weeksInThisMonth = 0;
+                for (let k = col; k < weekColumnsData.length; k++) {
+                    if (weekColumnsData[k].month === month) weeksInThisMonth++;
+                    else break;
+                }
+
+                // 只有当该月份在视图中包含至少 2 周 (避免仅残存 1 周的边缘尾巴抢占位置)，
+                // 且与上一个已渲染标签相隔 >= 2 列 (>= 22px) 时才渲染
+                if (weeksInThisMonth >= 2) {
+                    if (lastLabelCol === -999 || col - lastLabelCol >= 2) {
                         shouldRenderMonthLabel[col] = true;
                         lastLabelCol = col;
                     }
