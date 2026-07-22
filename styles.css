@@ -63,7 +63,8 @@ div.markdown-embed.word-heatmap-embed {
     opacity: 0;
 }
 
-.word-heatmap-graph:hover .heatmap-buttons-container {
+.word-heatmap-block:hover .heatmap-buttons-container,
+.block-language-word-heatmap:hover .heatmap-buttons-container {
     opacity: 1;
 }
 
@@ -396,4 +397,9 @@ div.markdown-embed.word-heatmap-embed {
     width: 10px;
     height: 10px;
     border-radius: 3px;
+}
+
+/* 隐藏组件工具类 */
+.word-heatmap-graph .is-hidden {
+    display: none;
 }
