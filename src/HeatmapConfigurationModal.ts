@@ -135,13 +135,13 @@ export class HeatmapConfigurationModal extends Modal {
                     .setName(t("year", lang))
                     .addText(text => text
                         .setValue((this.config.year || new Date().getFullYear()).toString())
-                        .onChange(v => this.config.year = parseInt(v)));
+                        .onChange(v => this.config.year = parseInt(v) || new Date().getFullYear()));
             } else {
                 new Setting(container)
                     .setName(t("days", lang))
                     .addText(text => text
                         .setValue((this.config.days || 365).toString())
-                        .onChange(v => this.config.days = parseInt(v)));
+                        .onChange(v => this.config.days = parseInt(v) || 365));
             }
         });
 
@@ -285,6 +285,9 @@ export class HeatmapConfigurationModal extends Modal {
     }
 
     private executeSave() {
+        if (this.config.countType) {
+            this.dataManager.setCountType(this.config.countType);
+        }
         if (this.config.historyRetentionDays !== undefined) {
             this.dataManager.setHistoryRetentionDays(this.config.historyRetentionDays);
         }

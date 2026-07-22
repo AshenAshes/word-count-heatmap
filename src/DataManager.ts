@@ -1,17 +1,7 @@
 import { App, TFile, Plugin, debounce, Debouncer } from "obsidian";
 import dayjs from "dayjs";
-import { CountType, PluginData } from "./types";
+import { CountType, PluginData, createDefaultData } from "./types";
 import { LanguageOption, getLanguage } from "./i18n";
-
-const DEFAULT_DATA: PluginData = {
-    history: {},
-    todaySession: {},
-    lastSaveTime: 0,
-    sessionDate: "",
-    countType: 'word',
-    historyRetentionDays: 0, // 默认 0 (永久保留)
-    language: 'auto'
-};
 
 export class DataManager {
     private app: App;
@@ -23,7 +13,7 @@ export class DataManager {
     constructor(app: App, plugin: Plugin) {
         this.app = app;
         this.plugin = plugin;
-        this.data = DEFAULT_DATA;
+        this.data = createDefaultData();
         this.debouncedSave = debounce(() => this.saveData(), 1000, false);
         // [打字性能优化] 300ms 防抖包装，解决高频打字主线程卡顿
         this.debouncedUpdateFileStats = debounce(
@@ -35,7 +25,7 @@ export class DataManager {
 
     async loadData() {
         const loaded = (await this.plugin.loadData()) as Partial<PluginData> | null;
-        this.data = Object.assign({}, DEFAULT_DATA, loaded);
+        this.data = Object.assign(createDefaultData(), loaded);
         if (!this.data.language) {
             this.data.language = 'auto';
         }
@@ -64,7 +54,7 @@ export class DataManager {
         const todayKey = dayjs().format("YYYY-MM-DD");
         
         if (this.data.sessionDate !== todayKey) {
-            if (!this.data.sessionDate && this.data.history[todayKey]) {
+            if (!this.data.sessionDate && (this.data.history[todayKey] || Object.keys(this.data.todaySession).length > 0)) {
                 this.data.sessionDate = todayKey;
                 void this.saveData();
                 return;
@@ -73,10 +63,13 @@ export class DataManager {
             this.data.todaySession = {};
             this.data.sessionDate = todayKey;
             
-            // 跨天时自动触发历史瘦身归档
-            this.archiveOldHistory(this.data.historyRetentionDays);
             void this.saveData();
         }
+    }
+
+    flush() {
+        this.debouncedUpdateFileStats.run();
+        this.debouncedSave.run();
     }
 
     /**
@@ -118,14 +111,9 @@ export class DataManager {
         }
     }
 
-    public onLanguageChange?: () => void;
-
     setLanguage(lang: LanguageOption) {
         this.data.language = lang;
         void this.saveData();
-        if (this.onLanguageChange) {
-            this.onLanguageChange();
-        }
     }
 
     setHistoryRetentionDays(days: number) {
@@ -142,13 +130,25 @@ export class DataManager {
         }
     }
 
+    private isCJK(char: string): boolean {
+        const code = char.codePointAt(0);
+        if (code === undefined) return false;
+        return (code >= 0x4E00 && code <= 0x9FFF) ||   // 汉字 / CJK 统一表意文字
+               (code >= 0x3400 && code <= 0x4DBF) ||   // CJK 扩展 A
+               (code >= 0xF900 && code <= 0xFAFF) ||   // CJK 兼容表意文字
+               (code >= 0x3040 && code <= 0x309F) ||   // 日文平假名
+               (code >= 0x30A0 && code <= 0x30FF) ||   // 日文片假名
+               (code >= 0xAC00 && code <= 0xD7AF) ||   // 韩文音节
+               (code >= 0x20000 && code <= 0x323AF);   // CJK 扩展 B~H + 兼容扩展区
+    }
+
     private getWordCount(text: string): number {
-        const pattern = /[a-zA-Z0-9_\u0392-\u03c9\u0400-\u04FF]+|[\u4E00-\u9FFF\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\uac00-\ud7af\u0400-\u04FF]+|[\u00E0-\u00FC]/g;
+        const pattern = /[a-zA-Z0-9_\u0392-\u03c9\u0400-\u04FF\u00E0-\u00FC]+|[\u4E00-\u9FFF\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\uac00-\ud7af]+/g;
         const m = text.match(pattern);
         let count = 0;
         if (m === null) return 0;
         for (let i = 0; i < m.length; i++) {
-            if (m[i].charCodeAt(0) >= 0x4e00) {
+            if (this.isCJK(m[i][0])) {
                 count += m[i].length;
             } else {
                 count += 1;
@@ -191,7 +191,11 @@ export class DataManager {
             this.data.history[todayKey] = { totalWords: 0, files: {} };
         }
         
-        this.data.history[todayKey].files[filePath] = diff;
+        if (diff <= 0) {
+            delete this.data.history[todayKey].files[filePath];
+        } else {
+            this.data.history[todayKey].files[filePath] = diff;
+        }
         
         this.recalculateTotal(todayKey);
         this.debouncedSave();
@@ -209,12 +213,16 @@ export class DataManager {
     }
     
     getHeatmapData(excludeFolders: string[] = []) {
+        const normalizedFolders = (excludeFolders || []).map(f => f.replace(/^\/+|\/+$/g, ""));
         return Object.entries(this.data.history).map(([date, stats]) => {
             let value = 0;
-            if (excludeFolders && excludeFolders.length > 0) {
+            if (normalizedFolders.length > 0) {
                 if (stats.files && Object.keys(stats.files).length > 0) {
                     for (const [filepath, count] of Object.entries(stats.files)) {
-                        const shouldExclude = excludeFolders.some(folder => filepath.startsWith(folder));
+                        const cleanPath = filepath.replace(/^\/+|\/+$/g, "");
+                        const shouldExclude = normalizedFolders.some(folder => 
+                            cleanPath === folder || cleanPath.startsWith(folder + "/")
+                        );
                         if (!shouldExclude && count > 0) {
                             value += count;
                         }

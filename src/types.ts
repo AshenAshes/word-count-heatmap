@@ -78,3 +78,15 @@ export const mapThemeToRules = (theme: GraphTheme, rawThresholds?: number[] | [n
         { min: t3, max: 9999999, color: colors[4], text: "" }
     ];
 };
+
+export function createDefaultData(): PluginData {
+    return {
+        history: {},
+        todaySession: {},
+        lastSaveTime: 0,
+        sessionDate: "",
+        countType: 'word',
+        historyRetentionDays: 0,
+        language: 'auto'
+    };
+}

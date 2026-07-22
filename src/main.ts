@@ -67,9 +67,6 @@ export default class WordHeatmapPlugin extends Plugin {
              })
          );
 
-        // 监听语言切换，实时动态刷新 Ctrl+P 命令名称
-        this.dataManager.onLanguageChange = () => this.registerCommands();
-
         // 注册控制台命令：插入字数热力图 (Ctrl+P / Command Palette)
         this.registerCommands();
     }
@@ -163,7 +160,30 @@ export default class WordHeatmapPlugin extends Plugin {
                 await this.app.vault.modify(file, newFileContent);
                 return;
             } catch (error) {
-                console.debug("Word Heatmap: File update skipped, trying Canvas lookup...", error);
+                console.debug("Word Heatmap: File section update failed, trying fallback...", error);
+            }
+        }
+
+        // Callout / Table 嵌套结构下的保存兜底
+        if (file instanceof TFile) {
+            try {
+                const content = await this.app.vault.read(file);
+                const exactOldBlock = `\`\`\`word-heatmap\n${oldSource}\`\`\``;
+                if (content.includes(exactOldBlock)) {
+                    const newFileContent = content.replace(exactOldBlock, () => newCodeBlockContent);
+                    await this.app.vault.modify(file, newFileContent);
+                    return;
+                } else {
+                    const escapedOld = oldSource.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp("```word-heatmap\\s*" + escapedOld + "\\s*```");
+                    if (regex.test(content)) {
+                        const newFileContent = content.replace(regex, () => newCodeBlockContent);
+                        await this.app.vault.modify(file, newFileContent);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.debug("Word Heatmap: Nested fallback update failed", error);
             }
         }
 
@@ -196,10 +216,11 @@ export default class WordHeatmapPlugin extends Plugin {
                     const exactOldBlock = `\`\`\`word-heatmap\n${oldSource}\`\`\``;
                     
                     if (text.includes(exactOldBlock)) {
-                        node.setText(text.replace(exactOldBlock, newCodeBlockContent));
+                        node.setText(text.replace(exactOldBlock, () => newCodeBlockContent));
                     } else {
-                        const regex = /```word-heatmap[\s\S]*?```/;
-                        node.setText(text.replace(regex, newCodeBlockContent));
+                        const escapedOld = oldSource.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp("```word-heatmap\\s*" + escapedOld + "\\s*```");
+                        node.setText(text.replace(regex, () => newCodeBlockContent));
                     }
                     
                     canvas.requestSave();
@@ -211,5 +232,10 @@ export default class WordHeatmapPlugin extends Plugin {
         new Notice(t("saveFailedNotice", this.dataManager.data.language));
     }
 
-    onunload() { void this.dataManager.saveData(); }
+    onunload() {
+        if (this.dataManager) {
+            this.dataManager.flush();
+        }
+        void this.dataManager.saveData();
+    }
 }

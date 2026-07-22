@@ -3,10 +3,7 @@ import { DataManager } from "./DataManager";
 import dayjs from "dayjs";
 import { HeatmapConfig, mapThemeToRules, CellStyleRule, DayStats } from "./types";
 import { t, getLanguage, LanguageOption } from "./i18n";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import "dayjs/locale/zh-cn";
-
-dayjs.extend(isSameOrAfter);
 
 export class HeatmapRenderer {
     static render(app: App, container: HTMLElement, dataManager: DataManager, config: HeatmapConfig) {
@@ -65,12 +62,10 @@ export class HeatmapRenderer {
 
         let loopDate = startDate.day(startOfWeek);
         if (loopDate.isAfter(startDate)) loopDate = loopDate.subtract(7, 'day');
-        const endLoopDate = endDate.endOf('week').day(startOfWeek === 0 ? 6 : startOfWeek - 1);
-
         // 1. 预解析所有周列数据
         const weekColumnsData: { firstDayOfWeek: dayjs.Dayjs; month: number }[] = [];
         let tempDate = loopDate;
-        while (tempDate.isBefore(endLoopDate) || tempDate.isSame(endLoopDate, 'day')) {
+        while (tempDate.isBefore(endDate) || tempDate.isSame(endDate, 'day')) {
             weekColumnsData.push({
                 firstDayOfWeek: tempDate,
                 month: tempDate.month()
@@ -224,9 +219,13 @@ export class HeatmapRenderer {
         const files = dayStats ? (dayStats.files || {}) : {};
         const entries = Object.entries(files);
         
+        const normalizedFolders = (excludeFolders || []).map(f => f.replace(/^\/+|\/+$/g, ""));
         const validEntries = entries.filter(([path, count]) => {
             if (count <= 0) return false; 
-            return !excludeFolders.some(f => path.startsWith(f));
+            const cleanPath = path.replace(/^\/+|\/+$/g, "");
+            return !normalizedFolders.some(folder => 
+                cleanPath === folder || cleanPath.startsWith(folder + "/")
+            );
         });
         
         validEntries.sort((a, b) => b[1] - a[1]);
@@ -269,7 +268,14 @@ export class HeatmapRenderer {
                 
                 nameEl.onclick = (e) => {
                     e.stopPropagation();
-                    void app.workspace.openLinkText(path, "", false);
+                    const newLeaf = e.ctrlKey || e.metaKey;
+                    void app.workspace.openLinkText(path, "", newLeaf);
+                };
+                nameEl.onauxclick = (e) => {
+                    if (e.button === 1) {
+                        e.stopPropagation();
+                        void app.workspace.openLinkText(path, "", true);
+                    }
                 };
 
                 li.createSpan({ cls: "file-count positive", text: `+${count.toString()}` });
