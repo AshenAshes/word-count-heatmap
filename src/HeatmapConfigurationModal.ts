@@ -1,7 +1,13 @@
-import { App, Modal, Setting, Notice } from "obsidian";
-import { HeatmapConfig, GraphTheme, THEMES, sanitizeThresholds } from "./types";
+import { App, Modal, Setting, Notice, ButtonComponent } from "obsidian";
+import { HeatmapConfig, GraphTheme, THEMES, sanitizeThresholds, CountType } from "./types";
 import { DataManager } from "./DataManager";
 import { t, LanguageOption, getLanguage } from "./i18n";
+
+declare module "obsidian" {
+    interface ButtonComponent {
+        setDestructive(): this;
+    }
+}
 
 class ConfirmationModal extends Modal {
     private titleText: string;
@@ -25,16 +31,18 @@ class ConfirmationModal extends Modal {
         contentEl.createEl("p", { text: this.messageText, cls: "heatmap-warning-desc" });
 
         new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText(this.cancelText)
-                .onClick(() => this.close()))
-            .addButton(btn => btn
-                .setButtonText(this.confirmText)
-                .setWarning()
-                .onClick(() => {
+            .addButton((btn: ButtonComponent) => {
+                btn.setButtonText(this.cancelText);
+                btn.onClick(() => this.close());
+            })
+            .addButton((btn: ButtonComponent) => {
+                btn.setButtonText(this.confirmText);
+                btn.setDestructive();
+                btn.onClick(() => {
                     this.close();
                     this.onConfirm();
-                }));
+                });
+            });
     }
 
     onClose() {
@@ -109,7 +117,7 @@ export class HeatmapConfigurationModal extends Modal {
                     .addOption("word", t("countTypeWord", lang))
                     .addOption("char", t("countTypeChar", lang))
                     .setValue(this.config.countType || (getLanguage(lang) === 'zh' ? 'char' : 'word'))
-                    .onChange(v => this.config.countType = v as any));
+                    .onChange(v => this.config.countType = v as CountType));
 
             new Setting(container)
                 .setName(t("dateRangeMode", lang))
@@ -118,7 +126,7 @@ export class HeatmapConfigurationModal extends Modal {
                     .addOption("fixed_year", t("fixedYear", lang))
                     .setValue(this.config.dateRangeType || "latest_days")
                     .onChange(v => {
-                        this.config.dateRangeType = v as any;
+                        this.config.dateRangeType = v as 'latest_days' | 'fixed_year';
                         this.display(); 
                     }));
 
@@ -169,7 +177,9 @@ export class HeatmapConfigurationModal extends Modal {
             new Setting(container)
                 .setName(t("theme", lang))
                 .addDropdown(drop => {
-                    Object.keys(THEMES).forEach(theme => drop.addOption(theme, theme));
+                    Object.keys(THEMES).forEach(theme => {
+                        drop.addOption(theme, theme);
+                    });
                     drop.setValue(this.config.theme || "Default");
                     drop.onChange(v => {
                         this.config.theme = v as GraphTheme;

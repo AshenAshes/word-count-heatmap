@@ -1,8 +1,8 @@
 import { App, setIcon } from "obsidian";
 import { DataManager } from "./DataManager";
 import dayjs from "dayjs";
-import { HeatmapConfig, mapThemeToRules, CellStyleRule } from "./types";
-import { t, getLanguage } from "./i18n";
+import { HeatmapConfig, mapThemeToRules, CellStyleRule, DayStats } from "./types";
+import { t, getLanguage, LanguageOption } from "./i18n";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import "dayjs/locale/zh-cn";
 
@@ -79,7 +79,7 @@ export class HeatmapRenderer {
         }
 
         // 2. 智能决定哪些周列可以安全渲染 Month Label (彻底修复跳月与重叠)
-        const shouldRenderMonthLabel: boolean[] = new Array(weekColumnsData.length).fill(false);
+        const shouldRenderMonthLabel: boolean[] = new Array<boolean>(weekColumnsData.length).fill(false);
         let lastLabelCol = -999;
         let currentM = -1;
 
@@ -154,7 +154,7 @@ export class HeatmapRenderer {
                         this.updateInteractionPanel(app, dayStr, dailyData[dayStr], graphEl, config.excludeFolders, lang);
                     } else {
                         const panel = graphEl.querySelector<HTMLElement>(".heatmap-interaction-panel");
-                        if (panel) panel.style.display = "none";
+                        if (panel) panel.addClass("is-hidden");
                     }
                 };
 
@@ -182,11 +182,22 @@ export class HeatmapRenderer {
         }
 
         this.renderInteractionPanel(graphEl, lang);
+
+        // 动态向上遍历查找嵌入或 Canvas 容器并添加类，从而在 CSS 中彻底弃用 :has 选择器
+        let ancestor = container.parentElement;
+        while (ancestor) {
+            if (ancestor.hasClass("markdown-embed")) {
+                ancestor.addClass("word-heatmap-embed");
+            }
+            if (ancestor.hasClass("canvas-node")) {
+                ancestor.addClass("word-heatmap-canvas-node");
+            }
+            ancestor = ancestor.parentElement;
+        }
     }
 
-    private static renderInteractionPanel(container: HTMLElement, langSetting?: any) {
-        const panel = container.createDiv({ cls: "heatmap-interaction-panel" });
-        panel.style.display = "none"; 
+    private static renderInteractionPanel(container: HTMLElement, langSetting?: LanguageOption) {
+        const panel = container.createDiv({ cls: "heatmap-interaction-panel is-hidden" });
 
         panel.createDiv({ cls: "interaction-summary" });
         panel.createDiv({ cls: "interaction-list" });
@@ -195,12 +206,12 @@ export class HeatmapRenderer {
         setIcon(closeBtn, "x");
         closeBtn.onclick = (e) => {
             e.stopPropagation();
-            panel.style.display = "none";
+            panel.addClass("is-hidden");
             container.querySelectorAll('.heatmap-cell.selected').forEach(el => el.removeClass('selected'));
         };
     }
 
-    private static updateInteractionPanel(app: App, date: string, dayStats: any, container: HTMLElement, excludeFolders: string[] = [], langSetting?: any) {
+    private static updateInteractionPanel(app: App, date: string, dayStats: DayStats | null | undefined, container: HTMLElement, excludeFolders: string[] = [], langSetting?: LanguageOption) {
         const panel = container.querySelector<HTMLElement>(".heatmap-interaction-panel");
         const summaryEl = panel?.querySelector(".interaction-summary");
         const listEl = panel?.querySelector(".interaction-list");
@@ -218,14 +229,14 @@ export class HeatmapRenderer {
             return !excludeFolders.some(f => path.startsWith(f));
         });
         
-        validEntries.sort((a, b) => (b[1] as number) - (a[1] as number));
+        validEntries.sort((a, b) => b[1] - a[1]);
 
-        let totalWords = validEntries.reduce((acc, cur) => acc + (cur[1] as number), 0);
+        let totalWords = validEntries.reduce((acc, cur) => acc + cur[1], 0);
         let fileCount = validEntries.length;
 
         // 如果包含历史归档总字数 (files 已经被清理，但 totalWords 存在)
         const isArchived = dayStats && Object.keys(files).length === 0 && dayStats.totalWords > 0;
-        if (isArchived) {
+        if (isArchived && dayStats) {
             totalWords = dayStats.totalWords;
         }
 
@@ -261,11 +272,11 @@ export class HeatmapRenderer {
                     void app.workspace.openLinkText(path, "", false);
                 };
 
-                li.createSpan({ cls: "file-count positive", text: `+${(count as number).toString()}` });
+                li.createSpan({ cls: "file-count positive", text: `+${count.toString()}` });
             }
         }
 
-        panel.style.display = "flex";
+        panel.removeClass("is-hidden");
     }
 
     private static matchRule(value: number, rules: CellStyleRule[]): CellStyleRule {
@@ -278,7 +289,7 @@ export class HeatmapRenderer {
         return activeRules[activeRules.length - 1];
     }
 
-    private static renderIndicators(container: HTMLElement, rules: CellStyleRule[], langSetting?: any) {
+    private static renderIndicators(container: HTMLElement, rules: CellStyleRule[], langSetting?: LanguageOption) {
         const indicatorContainer = container.createDiv({ cls: "heatmap-indicators" });
         indicatorContainer.createSpan({ text: t("less", langSetting), cls: "indicator-text" });
         

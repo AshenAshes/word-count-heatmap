@@ -55,10 +55,10 @@ export const THEMES: Record<GraphTheme, string[]> = {
     Wine:    ["#ebedf0", "#d8b0b3", "#c78089", "#ac4c61", "#830738"]
 };
 
-export function sanitizeThresholds(raw?: any): [number, number, number] {
-    let t1 = parseInt(raw?.[0], 10);
-    let t2 = parseInt(raw?.[1], 10);
-    let t3 = parseInt(raw?.[2], 10);
+export function sanitizeThresholds(raw?: number[] | [number, number, number] | null): [number, number, number] {
+    let t1 = raw && raw[0] !== undefined ? parseInt(raw[0].toString(), 10) : NaN;
+    let t2 = raw && raw[1] !== undefined ? parseInt(raw[1].toString(), 10) : NaN;
+    let t3 = raw && raw[2] !== undefined ? parseInt(raw[2].toString(), 10) : NaN;
 
     if (isNaN(t1) || t1 < 1) t1 = 200;
     if (isNaN(t2) || t2 <= t1) t2 = Math.max(t1 + 1, 1000);
@@ -67,7 +67,7 @@ export function sanitizeThresholds(raw?: any): [number, number, number] {
     return [t1, t2, t3];
 }
 
-export const mapThemeToRules = (theme: GraphTheme, rawThresholds?: any): CellStyleRule[] => {
+export const mapThemeToRules = (theme: GraphTheme, rawThresholds?: number[] | [number, number, number] | null): CellStyleRule[] => {
     const colors = THEMES[theme] || THEMES.Default;
     const [t1, t2, t3] = sanitizeThresholds(rawThresholds);
     return [

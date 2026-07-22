@@ -12,48 +12,43 @@
     flex-direction: column;
 }
 
-/* ============================================================
-   [Canvas/Embed 终极美化] 彻底隐藏文件名和边框
-   ============================================================ */
-
 /* 1. 隐藏 Canvas 卡片外壳的标题栏 (Node Label) */
-.canvas-node:has(.word-heatmap-block) .canvas-node-label {
-    display: none !important;
+.canvas-node.word-heatmap-canvas-node .canvas-node-label {
+    display: none;
 }
 
 /* 2. [核心修复] 针对嵌入视图内部，隐藏所有可能的标题栏元素 */
-/* 使用 :has() 检测：如果嵌入的内容里有热力图，就隐藏这个嵌入框的标题 */
-.markdown-embed:has(.word-heatmap-block) .markdown-embed-header,
-.markdown-embed:has(.word-heatmap-block) .file-embed-title,
-.markdown-embed:has(.word-heatmap-block) .markdown-embed-link,
-.markdown-embed:has(.word-heatmap-block) .markdown-embed-info {
-    display: none !important;
-    height: 0 !important;
-    min-height: 0 !important;
+.markdown-embed.word-heatmap-embed .markdown-embed-header,
+.markdown-embed.word-heatmap-embed .file-embed-title,
+.markdown-embed.word-heatmap-embed .markdown-embed-link,
+.markdown-embed.word-heatmap-embed .markdown-embed-info {
+    display: none;
+    height: 0;
+    min-height: 0;
 }
 
 /* 3. 移除嵌入容器的边框、背景和多余间距，让它看起来像原生控件 */
-.markdown-embed:has(.word-heatmap-block) {
-    border: none !important;
-    background: transparent !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    min-height: 0 !important;
-    box-shadow: none !important;
+div.markdown-embed.word-heatmap-embed {
+    border: none;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    box-shadow: none;
 }
 
 /* 4. 移除预览视图的内容内边距 */
-.markdown-embed:has(.word-heatmap-block) .markdown-preview-view {
-    padding: 0 !important;
-    margin: 0 !important;
+.markdown-embed.word-heatmap-embed .markdown-preview-view {
+    padding: 0;
+    margin: 0;
 }
 
 /* ============================================================ */
 
 /* 隐藏原生编辑按钮 */
-.word-heatmap-block .edit-block-button,
-.block-language-word-heatmap .edit-block-button {
-    display: none !important;
+.word-heatmap-block div.edit-block-button,
+.block-language-word-heatmap div.edit-block-button {
+    display: none;
 }
 
 /* --- 按钮容器 --- */

@@ -34,7 +34,7 @@ export class DataManager {
     }
 
     async loadData() {
-        const loaded = await this.plugin.loadData();
+        const loaded = (await this.plugin.loadData()) as Partial<PluginData> | null;
         this.data = Object.assign({}, DEFAULT_DATA, loaded);
         if (!this.data.language) {
             this.data.language = 'auto';

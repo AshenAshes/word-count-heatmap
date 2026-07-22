@@ -3,12 +3,12 @@ import { DataManager } from "./DataManager";
 import { HeatmapRenderer } from "./HeatmapRenderer";
 import { HeatmapConfig } from "./types";
 import { HeatmapConfigurationModal } from "./HeatmapConfigurationModal";
-import { t } from "./i18n";
+import { t, LanguageOption } from "./i18n";
 
 class SourceCodeModal extends Modal {
     content: string;
-    langSetting?: any;
-    constructor(app: App, content: string, langSetting?: any) {
+    langSetting?: LanguageOption;
+    constructor(app: App, content: string, langSetting?: LanguageOption) {
         super(app);
         this.content = content;
         this.langSetting = langSetting;
@@ -36,7 +36,7 @@ export default class WordHeatmapPlugin extends Plugin {
 
             let config: HeatmapConfig = {};
             try {
-                config = source.trim() ? parseYaml(source) : {};
+                config = source.trim() ? (parseYaml(source) as Partial<HeatmapConfig>) : {};
             } catch (e) {
                 console.error("YAML Error", e);
             }
@@ -132,18 +132,14 @@ export default class WordHeatmapPlugin extends Plugin {
             if (parent) {
                 const nativeBtn = parent.querySelector('.edit-block-button');
                 if (nativeBtn) {
-                    (nativeBtn as HTMLElement).style.display = 'none';
+                    (nativeBtn as HTMLElement).setCssStyles({ display: 'none' });
                 }
             }
         }, 100); 
-
-        btnContainer.style.opacity = "0";
-        el.addEventListener("mouseenter", () => { btnContainer.style.opacity = "1"; });
-        el.addEventListener("mouseleave", () => { btnContainer.style.opacity = "0"; });
     }
 
     async updateCodeBlock(el: HTMLElement, config: HeatmapConfig, ctx: MarkdownPostProcessorContext, oldSource: string) {
-        const cleanConfig = JSON.parse(JSON.stringify(config));
+        const cleanConfig = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
         const yamlString = stringifyYaml(cleanConfig);
         const newCodeBlockContent = `\`\`\`word-heatmap\n${yamlString}\`\`\``;
 
@@ -171,11 +167,25 @@ export default class WordHeatmapPlugin extends Plugin {
             }
         }
 
+        interface CanvasNode {
+            contentEl: HTMLElement;
+            text: string;
+            setText(text: string): void;
+        }
+
+        interface CanvasView {
+            canvas: {
+                nodes: Map<string, CanvasNode>;
+                requestSave(): void;
+            };
+        }
+
         const leaves = this.app.workspace.getLeavesOfType("canvas");
         
         for (const leaf of leaves) {
-            const canvas = (leaf.view as any).canvas;
-            if (!canvas) continue;
+            const view = leaf.view as unknown as CanvasView;
+            const canvas = view?.canvas;
+            if (!canvas || !canvas.nodes) continue;
 
             for (const [, node] of canvas.nodes.entries()) {
                 if (node.contentEl && node.contentEl.contains(el)) {

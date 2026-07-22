@@ -28,14 +28,14 @@ describe("i18n module", () => {
 
     it("should fallback to 'en' when auto detects non-Chinese environment such as French or German", () => {
         const mockWindow = {
-            localStorage: {
-                getItem: (key: string) => (key === "language" ? "fr" : null)
+            moment: {
+                locale: () => "fr"
             }
         };
         (globalThis as any).window = mockWindow;
         expect(getLanguage("auto")).toBe("en");
 
-        mockWindow.localStorage.getItem = (key: string) => (key === "language" ? "ja" : null);
+        mockWindow.moment.locale = () => "ja";
         expect(getLanguage("auto")).toBe("en");
 
         delete (globalThis as any).window;
