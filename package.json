@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-word-heatmap",
+  "name": "word-count-heatmap",
   "version": "1.0.0",
-  "description": "Word Heatmap Plugin for Obsidian",
+  "description": "Visualizes your daily writing productivity with GitHub-style word count heatmaps.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

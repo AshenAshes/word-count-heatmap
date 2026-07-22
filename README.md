@@ -56,7 +56,7 @@ Access the plugin configuration modal via the gear icon on the heatmap block to 
 1. Install the **BRAT** plugin from the community plugin store and enable it.
 2. Open Obsidian settings and find **BRAT** in the sidebar.
 3. Click **Add Beta plugin**.
-4. Enter the GitHub repository URL: `https://github.com/AshenAshes/obsidian-word-heatmap`.
+4. Enter the GitHub repository URL: `https://github.com/AshenAshes/word-count-heatmap`.
 5. Click **Add Plugin**, then enable `Word Count Heatmap` under **Community plugins** settings.
 
 ### Manual Installation

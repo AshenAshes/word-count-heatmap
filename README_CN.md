@@ -55,7 +55,7 @@
 1. 在社区插件市场中安装并启用 **BRAT** 插件。
 2. 打开 Obsidian 设置，在左侧导航栏找到 **BRAT**。
 3. 点击 **Add Beta plugin**（添加测试版插件）。
-4. 在弹出的输入框中填入本仓库的 GitHub 地址：`https://github.com/AshenAshes/obsidian-word-heatmap`。
+4. 在弹出的输入框中填入本仓库的 GitHub 地址：`https://github.com/AshenAshes/word-count-heatmap`。
 5. 点击 **Add Plugin** 确认，随后在 **社区插件** 设置页启用 `Word Count Heatmap` 即可。
 
 ### 手动安装
