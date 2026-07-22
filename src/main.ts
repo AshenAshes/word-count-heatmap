@@ -143,7 +143,7 @@ export default class WordHeatmapPlugin extends Plugin {
         const sectionInfo = ctx.getSectionInfo(el);
         const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
 
-        if (file instanceof TFile && sectionInfo) {
+        if (file instanceof TFile && file.extension === 'md' && sectionInfo) {
             try {
                 const content = await this.app.vault.read(file);
                 const lines = content.split("\n");
@@ -165,7 +165,7 @@ export default class WordHeatmapPlugin extends Plugin {
         }
 
         // Callout / Table 嵌套结构下的保存兜底
-        if (file instanceof TFile) {
+        if (file instanceof TFile && file.extension === 'md') {
             try {
                 const content = await this.app.vault.read(file);
                 const exactOldBlock = `\`\`\`word-heatmap\n${oldSource}\`\`\``;
@@ -188,7 +188,9 @@ export default class WordHeatmapPlugin extends Plugin {
         }
 
         interface CanvasNode {
-            contentEl: HTMLElement;
+            nodeEl?: HTMLElement;
+            containerEl?: HTMLElement;
+            contentEl?: HTMLElement;
             text: string;
             setText(text: string): void;
         }
@@ -201,6 +203,7 @@ export default class WordHeatmapPlugin extends Plugin {
         }
 
         const leaves = this.app.workspace.getLeavesOfType("canvas");
+        const nodeEl = el.closest(".canvas-node");
         
         for (const leaf of leaves) {
             const view = leaf.view as unknown as CanvasView;
@@ -208,8 +211,13 @@ export default class WordHeatmapPlugin extends Plugin {
             if (!canvas || !canvas.nodes) continue;
 
             for (const [, node] of canvas.nodes.entries()) {
-                if (node.contentEl && node.contentEl.contains(el)) {
-                    
+                const isMatched = (nodeEl && (
+                    node.nodeEl === nodeEl ||
+                    node.containerEl === nodeEl ||
+                    node.contentEl === nodeEl
+                )) || (node.contentEl && node.contentEl.contains(el));
+
+                if (isMatched) {
                     const text = node.text;
                     if (!text) continue;
 

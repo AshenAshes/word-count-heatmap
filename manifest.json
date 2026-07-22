@@ -2,7 +2,7 @@
     "id": "word-count-heatmap",
     "name": "Word Count Heatmap",
     "version": "1.0.1",
-    "minAppVersion": "1.4.4",
+    "minAppVersion": "1.13.0",
     "description": "Visualizes your daily writing productivity with GitHub-style word count heatmaps.",
     "author": "Aluxes",
     "authorUrl": "https://github.com/AshenAshes",
