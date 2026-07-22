@@ -21,16 +21,20 @@ An Obsidian plugin that visualizes your daily writing productivity with a GitHub
 1. Open the Command Palette using `Ctrl + P` (Windows/Linux) or `Cmd + P` (macOS).
 2. Type and select `Word Count Heatmap: Insert Word Heatmap` (or `插入字数热力图` in Chinese environment).
 3. The plugin will automatically insert a code block at your current cursor position:
-   ```word-heatmap
-   ```
+
+ >  \`\`\`word-heatmap
+ > 
+ >  \`\`\`
 
 ### Method 2: Manual Code Block Insertion
 Simply insert the following code block in any note to render the heatmap:
 
-```word-heatmap
-```
+ > \`\`\`word-heatmap
+ >
+ > \`\`\`
 
-You can configure the heatmap directly by clicking the **Set** (settings) button in the upper-right corner of the rendered block, or by defining config parameters inline using YAML:
+
+You can configure the heatmap directly by clicking the **Set** (settings) button in the upper-right corner of the rendered block, or by defining config parameters inline using YAML.
 
 ## Settings
 
