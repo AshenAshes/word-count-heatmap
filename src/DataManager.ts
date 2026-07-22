@@ -65,19 +65,17 @@ export class DataManager {
         
         if (this.data.sessionDate !== todayKey) {
             if (!this.data.sessionDate && this.data.history[todayKey]) {
-                console.log(`[Word Heatmap] Recovering session for ${todayKey}...`);
                 this.data.sessionDate = todayKey;
-                this.saveData();
+                void this.saveData();
                 return;
             }
 
-            console.log(`[Word Heatmap] New day: ${todayKey}. Resetting session.`);
             this.data.todaySession = {};
             this.data.sessionDate = todayKey;
             
             // 跨天时自动触发历史瘦身归档
             this.archiveOldHistory(this.data.historyRetentionDays);
-            this.saveData();
+            void this.saveData();
         }
     }
 
@@ -104,22 +102,19 @@ export class DataManager {
         }
 
         if (archivedCount > 0) {
-            console.log(`[Word Heatmap] Archived details for ${archivedCount} old dates (older than ${retentionDays} days).`);
             this.debouncedSave();
         }
     }
 
     setCountType(type: CountType) {
         if (this.data.countType !== type) {
-            console.log(`[Word Heatmap] Switching count type from ${this.data.countType} to ${type}. Resetting stats.`);
-            
             this.data.countType = type;
             this.data.todaySession = {};
             const todayKey = dayjs().format("YYYY-MM-DD");
             if (this.data.history[todayKey]) {
                 delete this.data.history[todayKey];
             }
-            this.saveData();
+            void this.saveData();
         }
     }
 
@@ -127,7 +122,7 @@ export class DataManager {
 
     setLanguage(lang: LanguageOption) {
         this.data.language = lang;
-        this.saveData();
+        void this.saveData();
         if (this.onLanguageChange) {
             this.onLanguageChange();
         }
@@ -136,7 +131,7 @@ export class DataManager {
     setHistoryRetentionDays(days: number) {
         this.data.historyRetentionDays = days;
         this.archiveOldHistory(days);
-        this.saveData();
+        void this.saveData();
     }
 
     getCount(text: string): number {

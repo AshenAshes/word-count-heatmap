@@ -87,12 +87,10 @@ export default class WordHeatmapPlugin extends Plugin {
 
     mountButtons(el: HTMLElement, config: HeatmapConfig, sourceCode: string, ctx: MarkdownPostProcessorContext) {
         const lang = config.language || this.dataManager.data.language || 'auto';
-        const btnContainer = document.createElement("div");
-        btnContainer.className = "heatmap-buttons-container";
+        const btnContainer = createDiv({ cls: "heatmap-buttons-container" });
         
         // 1. 配置按钮
-        const configBtn = document.createElement("div");
-        configBtn.className = "heatmap-btn";
+        const configBtn = createDiv({ cls: "heatmap-btn" });
         configBtn.setAttribute("aria-label", t("configureLabel", lang));
         
         const settingsIcon = getIcon("settings") || getIcon("gear");
@@ -105,13 +103,12 @@ export default class WordHeatmapPlugin extends Plugin {
         configBtn.onclick = (e) => {
             e.stopPropagation();
             new HeatmapConfigurationModal(this.app, this.dataManager, config, (newConfig) => {
-                this.updateCodeBlock(el, newConfig, ctx, sourceCode);
+                void this.updateCodeBlock(el, newConfig, ctx, sourceCode);
             }).open();
         };
 
         // 2. 源码按钮
-        const codeBtn = document.createElement("div");
-        codeBtn.className = "heatmap-btn";
+        const codeBtn = createDiv({ cls: "heatmap-btn" });
         codeBtn.setAttribute("aria-label", t("viewSourceLabel", lang));
 
         const codeIcon = getIcon("code"); 
@@ -130,7 +127,7 @@ export default class WordHeatmapPlugin extends Plugin {
         btnContainer.appendChild(codeBtn);
         el.appendChild(btnContainer);
 
-        setTimeout(() => {
+        window.setTimeout(() => {
             const parent = el.parentElement;
             if (parent) {
                 const nativeBtn = parent.querySelector('.edit-block-button');
@@ -180,7 +177,7 @@ export default class WordHeatmapPlugin extends Plugin {
             const canvas = (leaf.view as any).canvas;
             if (!canvas) continue;
 
-            for (const [id, node] of canvas.nodes.entries()) {
+            for (const [, node] of canvas.nodes.entries()) {
                 if (node.contentEl && node.contentEl.contains(el)) {
                     
                     const text = node.text;
@@ -204,5 +201,5 @@ export default class WordHeatmapPlugin extends Plugin {
         new Notice(t("saveFailedNotice", this.dataManager.data.language));
     }
 
-    async onunload() { await this.dataManager.saveData(); }
+    onunload() { void this.dataManager.saveData(); }
 }

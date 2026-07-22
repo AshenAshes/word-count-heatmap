@@ -4,9 +4,12 @@ export function getLanguage(setting?: LanguageOption): 'zh' | 'en' {
     if (setting === 'zh') return 'zh';
     if (setting === 'en') return 'en';
     
-    // Default 'auto'
+    // Default 'auto': 优先通过 Obsidian 原生 Moment 环境或 localStorage 获取环境语言
     if (typeof window !== 'undefined') {
-        const obsLang = (window.localStorage.getItem("language") || navigator.language || "").toLowerCase();
+        const momentLang = (window as any).moment?.locale();
+        // eslint-disable-next-line obsidianmd/prefer-get-language
+        const storageLang = window.localStorage ? window.localStorage.getItem("language") : null;
+        const obsLang = (momentLang || storageLang || navigator.language || "").toLowerCase();
         if (obsLang.startsWith("zh")) {
             return "zh";
         }

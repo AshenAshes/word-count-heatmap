@@ -3,8 +3,8 @@
     "name": "Word Count Heatmap",
     "version": "1.0.0",
     "minAppVersion": "1.3.0",
-    "description": "基于每日字数生成Github风格热力图",
+    "description": "Visualizes your daily writing productivity with GitHub-style word count heatmaps.",
     "author": "Aluxes",
-    "authorUrl": "",
+    "authorUrl": "https://github.com/AshenAshes",
     "isDesktopOnly": false
 }

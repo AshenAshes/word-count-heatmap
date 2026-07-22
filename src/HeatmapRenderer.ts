@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App, setIcon } from "obsidian";
 import { DataManager } from "./DataManager";
 import dayjs from "dayjs";
 import { HeatmapConfig, mapThemeToRules, CellStyleRule } from "./types";
@@ -42,7 +42,7 @@ export class HeatmapRenderer {
         });
         
         if (config.title) {
-            graphEl.createEl("div", { cls: "heatmap-title", text: config.title });
+            graphEl.createDiv({ cls: "heatmap-title", text: config.title });
         }
 
         const mainContainer = graphEl.createDiv({ cls: "heatmap-main-container" });
@@ -56,7 +56,7 @@ export class HeatmapRenderer {
             if (i === 1 || i === 3 || i === 5) {
                 label.innerText = adjustedWeekNames[i];
             } else {
-                label.innerHTML = "&nbsp;"; 
+                label.setText("\u00A0");
             }
         }
 
@@ -153,7 +153,7 @@ export class HeatmapRenderer {
                         cell.addClass('selected');
                         this.updateInteractionPanel(app, dayStr, dailyData[dayStr], graphEl, config.excludeFolders, lang);
                     } else {
-                        const panel = graphEl.querySelector(".heatmap-interaction-panel") as HTMLElement;
+                        const panel = graphEl.querySelector<HTMLElement>(".heatmap-interaction-panel");
                         if (panel) panel.style.display = "none";
                     }
                 };
@@ -192,7 +192,7 @@ export class HeatmapRenderer {
         panel.createDiv({ cls: "interaction-list" });
         
         const closeBtn = panel.createDiv({ cls: "interaction-close-btn", title: t("cancelBtn", langSetting) });
-        closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+        setIcon(closeBtn, "x");
         closeBtn.onclick = (e) => {
             e.stopPropagation();
             panel.style.display = "none";
@@ -201,9 +201,9 @@ export class HeatmapRenderer {
     }
 
     private static updateInteractionPanel(app: App, date: string, dayStats: any, container: HTMLElement, excludeFolders: string[] = [], langSetting?: any) {
-        const panel = container.querySelector(".heatmap-interaction-panel") as HTMLElement;
-        const summaryEl = panel.querySelector(".interaction-summary");
-        const listEl = panel.querySelector(".interaction-list");
+        const panel = container.querySelector<HTMLElement>(".heatmap-interaction-panel");
+        const summaryEl = panel?.querySelector(".interaction-summary");
+        const listEl = panel?.querySelector(".interaction-list");
         
         if (!panel || !summaryEl || !listEl) return;
 
@@ -211,16 +211,16 @@ export class HeatmapRenderer {
         const filesLabel = t("files", langSetting);
 
         const files = dayStats ? (dayStats.files || {}) : {};
-        const entries = Object.entries(files) as [string, number][];
+        const entries = Object.entries(files);
         
         const validEntries = entries.filter(([path, count]) => {
             if (count <= 0) return false; 
             return !excludeFolders.some(f => path.startsWith(f));
         });
         
-        validEntries.sort((a, b) => b[1] - a[1]);
+        validEntries.sort((a, b) => (b[1] as number) - (a[1] as number));
 
-        let totalWords = validEntries.reduce((acc, cur) => acc + cur[1], 0);
+        let totalWords = validEntries.reduce((acc, cur) => acc + (cur[1] as number), 0);
         let fileCount = validEntries.length;
 
         // 如果包含历史归档总字数 (files 已经被清理，但 totalWords 存在)
@@ -229,14 +229,14 @@ export class HeatmapRenderer {
             totalWords = dayStats.totalWords;
         }
 
-        summaryEl.innerHTML = `
-            <div class="summary-date">${date}</div>
-            <div class="summary-details">
-                <span class="summary-val">${totalWords}</span> <span class="summary-unit">${wordsLabel}</span>
-                <span class="summary-sep">·</span>
-                <span class="summary-val">${fileCount}</span> <span class="summary-unit">${filesLabel}</span>
-            </div>
-        `;
+        summaryEl.empty();
+        summaryEl.createDiv({ cls: "summary-date", text: date });
+        const detailsEl = summaryEl.createDiv({ cls: "summary-details" });
+        detailsEl.createSpan({ cls: "summary-val", text: totalWords.toString() });
+        detailsEl.createSpan({ cls: "summary-unit", text: ` ${wordsLabel} ` });
+        detailsEl.createSpan({ cls: "summary-sep", text: "· " });
+        detailsEl.createSpan({ cls: "summary-val", text: fileCount.toString() });
+        detailsEl.createSpan({ cls: "summary-unit", text: ` ${filesLabel}` });
 
         listEl.empty();
         if (isArchived) {
@@ -250,7 +250,7 @@ export class HeatmapRenderer {
                 
                 const displayName = path.endsWith('.md') ? path.slice(0, -3) : path;
                 
-                const nameEl = li.createEl("span", { 
+                const nameEl = li.createSpan({ 
                     cls: "file-name clickable",
                     text: displayName, 
                     title: path 
@@ -258,10 +258,10 @@ export class HeatmapRenderer {
                 
                 nameEl.onclick = (e) => {
                     e.stopPropagation();
-                    app.workspace.openLinkText(path, "", false);
+                    void app.workspace.openLinkText(path, "", false);
                 };
 
-                li.createSpan({ cls: "file-count positive", text: `+${count}` });
+                li.createSpan({ cls: "file-count positive", text: `+${(count as number).toString()}` });
             }
         }
 
